@@ -2,37 +2,45 @@
   "manifest_version": 3,
   "name": "Job Tracker 求职投递追踪",
   "version": "1.0.0",
-  "description": "一键/自动记录投递的公司、职位和 JD，识别 Gmail 里的 OA/面试/拒信并更新状态。数据只保存在本机浏览器。",
-  "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting", "alarms"],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4P/NhkhLLKKULgg4w5hc4EDNmvOwYzVGdv99Tt2axcCCo/Nl36HmvxTk6HJzKuSc8rANRg0Z2bQLWTT+GtYi/HYhwBDtXE/lMV5XugB8rm2wHX2EzEb/uIlfR6RpZGMa3hQgRxPTxLEmQaPRogFa/kzcHVcK9mEAyoX93s7VRMZeYOCJCfUF6s4kKBNeSqWYy479L7LRIdgoV3RyskXlCcpjtPqc9wpEOdulzTcYr/QN5e99uXrGl+qxknhMM1HtrqdLYr/5upM4dN7hGzWtUKv5awdqkaXeM2xe6F/QOWRGBNDgPW4qOF1rZQVx3VmeUS6/VTeOA1zgkniDszofsQIDAQAB",
+  "description": "一键/自动记录投递的公司、职位和 JD，识别 Gmail 里的 OA/面试/拒信，并通过 Google 账号在多台电脑间同步。",
+  "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting", "alarms", "identity"],
   "host_permissions": ["http://*/*", "https://*/*"],
-  "background": { "service_worker": "background.js" },
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "记录这个职位 (Alt+Shift+J)",
-    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png" }
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
   },
-  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "options_page": "dashboard/dashboard.html",
   "commands": {
-    "_execute_action": { "suggested_key": { "default": "Alt+Shift+J" } }
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+J"
+      }
+    }
   },
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
-      "exclude_matches": [
-        "*://*.greenhouse.io/*", "*://*.lever.co/*", "*://*.myworkdayjobs.com/*", "*://*.myworkdaysite.com/*",
-        "*://*.ashbyhq.com/*", "*://*.icims.com/*", "*://*.jobvite.com/*", "*://*.smartrecruiters.com/*",
-        "*://*.workable.com/*", "*://*.bamboohr.com/*", "*://*.breezy.hr/*", "*://*.recruitee.com/*", "*://*.rippling.com/*"
-      ],
+      "exclude_matches": ["*://*.greenhouse.io/*", "*://*.lever.co/*", "*://*.myworkdayjobs.com/*", "*://*.myworkdaysite.com/*", "*://*.ashbyhq.com/*", "*://*.icims.com/*", "*://*.jobvite.com/*", "*://*.smartrecruiters.com/*", "*://*.workable.com/*", "*://*.bamboohr.com/*", "*://*.breezy.hr/*", "*://*.recruitee.com/*", "*://*.rippling.com/*"],
       "js": ["lib/analyze.js", "content/extractors.js", "content/content.js"],
       "run_at": "document_idle"
     },
     {
-      "matches": [
-        "*://*.greenhouse.io/*", "*://*.lever.co/*", "*://*.myworkdayjobs.com/*", "*://*.myworkdaysite.com/*",
-        "*://*.ashbyhq.com/*", "*://*.icims.com/*", "*://*.jobvite.com/*", "*://*.smartrecruiters.com/*",
-        "*://*.workable.com/*", "*://*.bamboohr.com/*", "*://*.breezy.hr/*", "*://*.recruitee.com/*", "*://*.rippling.com/*"
-      ],
+      "matches": ["*://*.greenhouse.io/*", "*://*.lever.co/*", "*://*.myworkdayjobs.com/*", "*://*.myworkdaysite.com/*", "*://*.ashbyhq.com/*", "*://*.icims.com/*", "*://*.jobvite.com/*", "*://*.smartrecruiters.com/*", "*://*.workable.com/*", "*://*.bamboohr.com/*", "*://*.breezy.hr/*", "*://*.recruitee.com/*", "*://*.rippling.com/*"],
       "js": ["lib/analyze.js", "content/extractors.js", "content/content.js"],
       "run_at": "document_idle",
       "all_frames": true

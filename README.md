@@ -1,35 +1,26 @@
 # Job Tracker 求职投递追踪
 
-一个 Chrome / Edge 浏览器扩展，用来记录美国求职（实习 + 全职）的每一次投递：公司、职位、地点、JD 全文、薪资、签证 sponsor 情况、面试轮次和准备笔记；还能识别 Gmail 里的 OA / 面试邀请 / 拒信并自动更新状态，并可以通过你自己的 GitHub 私有仓库在多台电脑之间同步。数据只存在你的浏览器和你自己的仓库里，不经过任何第三方服务器。
+一个 Chrome / Edge 浏览器扩展，用来记录美国求职（实习 + 全职）的每一次投递：公司、职位、地点、JD 全文、薪资、签证 sponsor 情况、面试轮次和准备笔记；还能识别 Gmail 里的 OA / 面试邀请 / 拒信并自动更新状态，并可以用 Google 账号在多台电脑之间同步。没有开发者服务器：数据只存在你的浏览器和你自己的 Google Drive 里。
 
-## 安装（2 分钟）
+## 安装
 
-1. 打开 Chrome，地址栏输入 `chrome://extensions`（Edge 用 `edge://extensions`）
-2. 打开右上角 **开发者模式**
-3. 点 **加载已解压的扩展程序**，选择插件文件夹（Windows 上是 `E:\career\job-tracker`）
+### 从 Chrome 应用商店（上架后）
+
+打开商店链接 → **添加至 Chrome** → 追踪表右上角点 **☁ 登录同步** → 选 Google 账号 → 允许。换任何电脑都是这两步，插件更新会自动推送。
+
+### 上架之前：手动加载
+
+1. 拿到插件文件：这台电脑上就是 `E:\career\job-tracker`；其他电脑用 `dist/job-tracker-<版本>.zip`（`node scripts/pack.js` 生成）解压后的文件夹，或者直接拷整个文件夹
+2. 打开 `chrome://extensions`（Edge 用 `edge://extensions`），打开右上角 **开发者模式**
+3. 点 **加载已解压的扩展程序**，选择插件文件夹
 4. 点浏览器右上角的拼图图标，把 “Job Tracker 求职投递追踪” **固定** 到工具栏
+5. 追踪表右上角 **☁ 登录同步**，登录同一个 Google 账号，记录就会同步过来
 
 安装后会自动打开追踪表页面。修改代码后，在 `chrome://extensions` 里点这个扩展的 🔄 刷新即可。
 
 > 安装前已经打开的网页，需要刷新一次后自动检测才会生效（手动点图标记录不受影响）。
 
-### 在另一台电脑上（如 MacBook）
-
-插件代码放在 GitHub 私有仓库里（和存数据的 `job-tracker-data` 是两个仓库）。Mac 的终端里：
-
-```bash
-git clone https://github.com/<你的用户名>/job-tracker.git ~/job-tracker
-```
-
-第一次 clone 私有仓库时，Git 会让你登录 GitHub。然后在 Mac 的 Chrome 里 **加载已解压的扩展程序**，选择 `~/job-tracker`（Finder 里按 `Cmd+Shift+G` 输入路径）。
-
-**以后更新插件**：在 Mac 终端运行下面这条，再到 `chrome://extensions` 点 🔄：
-
-```bash
-git -C ~/job-tracker pull
-```
-
-数据不在这个代码仓库里，更新代码不会影响你的投递记录。
+> **从旧版本升级时**：这一版给插件固定了 ID（`pbdigaoohikokfaehfdfajdgdlgejmbp`，每台电脑都一样，Google 登录需要）。Chrome 会把它当成一个新插件，旧版本里的记录不会自动带过来：升级前先在旧版追踪表点 **备份 JSON**，升级后点 **导入备份**。之后登录 Google，就不用再手动搬数据了。
 
 ## 三种记录方式
 
@@ -91,43 +82,57 @@ git -C ~/job-tracker pull
 
 网站改版后抓取可能失效，弹窗里所有字段都可以手动修改。
 
-## 云同步（台式机 + MacBook）
+## 云同步（Google 账号）
 
-数据同步到 **你自己的 GitHub 私有仓库**，几台电脑填同一个仓库就会自动合并。不经过任何第三方服务器。
+追踪表右上角点 **☁ 登录同步** → 用 Google 登录。所有登录同一个 Google 账号的电脑会自动同步，Chrome 和 Edge 都可以。
 
-### 第一次设置（约 5 分钟，只做一次）
-
-1. **建仓库**：打开 <https://github.com/new>，名字随意（如 `job-tracker-data`），选 **Private**，点 Create repository。空仓库就行，不用加 README
-2. **生成 token**：打开 <https://github.com/settings/personal-access-tokens/new>（Fine-grained token）
-   - Token name：随意，如 `job-tracker`
-   - Expiration：建议选 1 年（过期后在插件里换一个即可）
-   - Repository access：选 **Only select repositories**，只勾刚建的仓库
-   - Permissions → Repository permissions → **Contents** 选 **Read and write**（Metadata 会自动变成只读，保持即可）
-   - 点 Generate token，复制以 `github_pat_` 开头的那串
-3. **在插件里开启**：追踪表右上角点 **☁ 开启云同步**，填 `用户名/仓库名`、粘贴 token、给这台电脑起个名字，点 **测试并开启**
-
-### 在 MacBook 上
-
-1. 按上面 “在另一台电脑上” 用 `git clone` 装好插件
-2. 追踪表 → ☁ 开启云同步，填 **同一个数据仓库**（`job-tracker-data`）。token 可以用同一个，也可以再生成一个
-3. 第一次同步时，两台电脑上已有的记录会自动合并，不会互相覆盖
-
-### 怎么同步
-
+- 数据存在 **你自己 Google Drive 的隐藏应用文件夹** 里（gzip 压缩的一个文件）：在 Drive 网页里看不到、不占普通文件列表，只有这个插件能读写。没有开发者服务器
 - 修改后约 10 秒自动上传；每 5 分钟、打开浏览器、打开追踪表时自动拉取；也可以在设置里点 **立即同步**
-- 右上角的 ☁ 显示状态：已同步 · N 分钟前 / 同步中 / ⚠ 同步失败（点开看原因）
-- **合并规则**：每条记录各自比较，修改时间较新的那一边为准；两台电脑改了不同的记录，两边的修改都会保留
+- 右上角的 ☁ 显示状态：已同步 · N 分钟前 / 同步中 / ⚠ 同步失败 / ⚠ 需要重新登录（点开看原因）
+- **合并规则**：每条记录各自比较，修改时间较新的那一边为准；两台电脑改了不同的记录，两边的修改都会保留。第一次在新电脑登录时，两边已有的记录会合并，不会互相覆盖
 - **删除** 会同步到所有电脑（不会被另一台电脑“复活”）；“清空全部数据” 也会清空云端
 - Gmail 里已经在一台电脑上识别过的邮件，另一台不会重复处理
-- 每次上传都是仓库里的一个 commit，可以在 GitHub 上看历史、恢复任意旧版本（数据在仓库根目录的 `job-tracker.json`）
-- 只允许私有仓库；token 只保存在本机插件里，“关闭同步” 会把它从这台电脑删掉
+- 登录状态跟着浏览器里的 Google 登录走：浏览器里退出了 Google，插件会提示 “需要重新登录”，点一下即可
+- **退出登录** 只影响这台电脑；要彻底撤销插件对 Drive 的访问，去 <https://myaccount.google.com/permissions>
+- 登录时如果 Google 显示权限勾选框，要勾上 Google Drive 那一项，否则无法同步
 
 ## 数据与备份
 
-- 数据存在本机 `chrome.storage.local`；开启云同步后，GitHub 仓库里也有一份带完整历史的副本
-- 没开云同步时，**卸载扩展会删除数据**。追踪表右上角 **备份 JSON**（完整备份，可用 “导入备份” 恢复）、**导出 CSV**（用 Excel / Google Sheets 打开）
-- 没开云同步、记录超过 5 条且 14 天没备份时，追踪表顶部会提醒
-- 设置里可以关闭自动记录
+- 数据存在本机浏览器；登录 Google 后，你的 Google Drive 里也有一份
+- 没登录同步时，**卸载扩展会删除数据**。追踪表右上角 **备份 JSON**（完整备份，可用 “导入备份” 恢复）、**导出 CSV**（用 Excel / Google Sheets 打开）
+- 没开同步、记录超过 5 条且 14 天没备份时，追踪表顶部会提醒
+- 设置里可以关闭自动记录和邮件识别
+
+## 一次性配置（只做一次，之后任何电脑都不用再配）
+
+### 1. Google 登录（约 10 分钟）
+
+插件要用 Google 登录，需要在 Google Cloud 注册一个 “登录应用”，拿到一个 Client ID。用 **个人 Gmail** 做，学校账号可能被管理员限制。
+
+1. 打开 <https://console.cloud.google.com/projectcreate>，项目名填 `Job Tracker` → **Create**
+2. 打开 <https://console.cloud.google.com/apis/library/drive.googleapis.com>（确认左上角选的是刚建的项目）→ **Enable**
+3. 打开 <https://console.cloud.google.com/auth/overview> → **Get started**：
+   - App name：`Job Tracker`；User support email：你的 Gmail
+   - Audience：**External**
+   - Contact information：你的 Gmail → 同意条款 → **Create**
+4. 左侧 **Data Access** → **Add or remove scopes** → 在筛选框搜 `drive.appdata`，勾选 `.../auth/drive.appdata` → **Update** → **Save**
+5. 左侧 **Audience** → Publishing status 下点 **Publish app** → Confirm（变成 In production。这个权限属于 Google 的 “非敏感” 级别，不需要审核；不发布的话每 7 天要重新登录一次）
+6. 左侧 **Clients** → **Create client**：
+   - Application type：**Web application**；Name：`Job Tracker extension`
+   - Authorized redirect URIs → **Add URI**：`https://pbdigaoohikokfaehfdfajdgdlgejmbp.chromiumapp.org/`
+   - **Create** → 复制 **Client ID**（形如 `1234…apps.googleusercontent.com`，不是密码，可以公开）
+7. 把 Client ID 填进 `lib/google.js` 的 `G.CLIENT_ID = '';`（或者发给我），然后在 `chrome://extensions` 点 🔄
+
+### 2. 上架 Chrome 应用商店（不公开链接）
+
+1. 打开 <https://chrome.google.com/webstore/devconsole>，用 Google 账号注册开发者（一次性 $5）
+2. 运行 `node scripts/pack.js`，生成 `dist/job-tracker-<版本>.zip`
+3. **New item** → 上传这个 zip
+4. 上传后 Package 页会显示商店版本的 **Item ID**（和上面的开发版 ID 不同）。回到 Google Cloud 的 Clients → 刚建的 client → Authorized redirect URIs 再加一条：`https://<商店 Item ID>.chromiumapp.org/` → Save
+5. 按 `store/listing.md` 填写商店信息、隐私、发布设置（截图用 `store/screenshot-1.png`、`store/screenshot-2.png`；隐私政策用 `store/privacy-policy.md` 发布成公开网页后的链接）
+6. Visibility 选 **Unlisted** → **Submit for review**。审核通过后得到商店链接，换电脑时打开链接安装即可
+
+以后更新插件：改 `manifest.json` 里的 `version`（比如 1.0.1）→ `node scripts/pack.js` → 在开发者后台上传新 zip → 提交审核，各电脑会自动更新。
 
 ## 文件结构
 
@@ -140,8 +145,11 @@ content/gmail.js        读取 Gmail 收件箱 / 打开的邮件，交给后台�
 lib/email.js            求职邮件分类（OA / 面试 / 拒信 / Offer / 确认）、匹配投递、撤销
 lib/analyze.js          JD 分析：类型 / 学期 / 签证 / 薪资 / 关键词 / URL 归一化
 lib/store.js            数据读写、导入导出
-lib/sync.js             GitHub 云同步：拉取、按记录合并、上传、冲突重试
+lib/google.js           Google 登录（launchWebAuthFlow）和 Drive 应用数据文件读写
+lib/sync.js             云同步：拉取、按记录合并（含删除）、上传
 lib/constants.js        状态、类型等常量
 popup/                  点击图标时的弹窗
 dashboard/              追踪表页面
+scripts/pack.js         生成上架用的 zip（dist/），去掉开发用的 key
+store/                  上架填写内容、隐私政策、商店截图
 ```

@@ -1,6 +1,6 @@
 // Service worker: records auto-detected applications, keeps per-tab "last job
 // viewed" cache, and shows a ✓ badge on pages that are already tracked.
-importScripts('lib/constants.js', 'lib/analyze.js', 'lib/store.js', 'lib/email.js', 'lib/sync.js');
+importScripts('lib/constants.js', 'lib/analyze.js', 'lib/store.js', 'lib/email.js', 'lib/google.js', 'lib/sync.js');
 
 const A = JT.analyze;
 const S = JT.store;
@@ -130,7 +130,11 @@ const handlers = {
     await E.undo(eventIds);
   },
 
-  JT_SYNC_SETUP: ({ repo, token, device }) => Y.setup({ repo, token, device }),
+  // The dashboard signs in (needs a click), then hands over the account for syncing.
+  async JT_SYNC_ENABLE({ email }) {
+    await Y.enable(email);
+    return Y.syncNow();
+  },
   JT_SYNC_NOW: () => Y.syncNow(),
   JT_SYNC_DISABLE: () => Y.disable(),
 };

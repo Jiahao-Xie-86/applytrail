@@ -32,7 +32,7 @@
         <li><b>邮件识别</b>：用 Gmail 网页版时，会自动识别 OA 邀请、面试邀请、拒信和 Offer，更新对应投递的状态（可撤销）。</li>
         <li><b>面试准备</b>：在这里点开任意一条记录，可以记录每轮面试、查看 JD 关键词、签证要求、一键打开面经 / 薪资调研链接。</li>
       </ol>
-      <p class="muted">数据只保存在本机浏览器里。建议定期点 “备份 JSON”。</p>
+      <p class="muted">点右上角 <b>☁ 登录同步</b> 用 Google 账号登录，换电脑时登录同一个账号，记录就都在。</p>
     </section>
 
     <section class="overview">
@@ -129,18 +129,13 @@
       <label class="check"><input type="checkbox" id="sEmail"> 识别 Gmail 里的求职邮件（OA / 面试 / 拒信 / Offer）并更新状态</label>
       <label>插件弹窗里的默认状态<select id="sDefault"></select></label>
       <fieldset class="sync-box" id="syncBox">
-        <legend>☁ 云同步（GitHub 私有仓库）</legend>
-        <p class="muted">台式机和 MacBook 填同一个仓库，数据会自动合并。第一次设置：
-          <a href="https://github.com/new" target="_blank" rel="noopener">新建一个 Private 仓库</a>，再
-          <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">生成 token</a>
-          （Repository access 只选这个仓库，Permissions → Contents 选 Read and write）。</p>
-        <label>仓库（用户名/仓库名）<input id="syRepo" placeholder="yourname/job-tracker-data" autocomplete="off" spellcheck="false"></label>
-        <label>Token<input id="syToken" type="password" placeholder="github_pat_…" autocomplete="off"></label>
-        <label>这台电脑的名字（会写在 GitHub 的提交记录里）<input id="syDevice" placeholder="Windows 台式机"></label>
+        <legend>☁ 云同步</legend>
+        <p class="muted" id="syIntro">用 Google 账号登录后，所有登录同一账号的电脑会自动同步。数据存在你自己 Google Drive 的隐藏应用文件夹里，只有这个插件能读写，不占普通文件列表。</p>
+        <p id="syAccount" class="hidden"></p>
         <div class="sync-actions">
-          <button type="button" id="syEnable" class="primary">测试并开启</button>
+          <button type="button" id="sySignIn" class="primary google-btn">用 Google 登录</button>
           <button type="button" id="syNow">立即同步</button>
-          <button type="button" id="syOff" class="danger">关闭同步</button>
+          <button type="button" id="syOff" class="danger">退出登录</button>
         </div>
         <p id="syStatus" class="muted"></p>
       </fieldset>
@@ -157,6 +152,7 @@
   <script src="../lib/analyze.js"></script>
   <script src="../lib/store.js"></script>
   <script src="../lib/email.js"></script>
+  <script src="../lib/google.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>

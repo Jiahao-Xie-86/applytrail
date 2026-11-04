@@ -155,7 +155,7 @@ function renderUpcoming() {
 async function renderBackupWarn() {
   const s = await S.getSettings();
   const { syncConfig, syncState } = await S.area.get(['syncConfig', 'syncState']);
-  // A working cloud sync is the backup (with full history on GitHub).
+  // A working cloud sync is the backup.
   const synced = syncConfig && syncConfig.enabled && syncState && syncState.lastSyncAt > Date.now() - 3 * 864e5;
   const days = s.lastBackupAt ? daysSince(s.lastBackupAt) : null;
   const show = !synced && state.apps.length >= 5 && (days === null || days >= 14);
@@ -807,9 +807,9 @@ async function openSettings(focusSync) {
   let usage = `共 ${state.apps.length} 条记录`;
   if (S.area.getBytesInUse) usage += `，占用 ${Math.round((await S.area.getBytesInUse(null)) / 1024)} KB`;
   $('sUsage').textContent = usage;
-  await renderSync(true);
+  await renderSync();
   $('settingsDlg').showModal();
-  if (focusSync) $(($('syRepo').value ? 'syNow' : 'syRepo')).focus();
+  if (focusSync) ($('sySignIn').classList.contains('hidden') ? $('syNow') : $('sySignIn')).focus();
 }
 
 $('settingsBtn').onclick = () => openSettings(false);
@@ -825,79 +825,78 @@ const sendBg = (msg) =>
     ? chrome.runtime.sendMessage(msg)
     : Promise.resolve({ ok: false, error: '只能在插件里使用' });
 
-// fillInputs: also (re)fill the form fields — only when the dialog opens, never while typing.
-async function renderSync(fillInputs) {
+function setSyncStatus(text, cls) {
+  $('syStatus').textContent = text;
+  $('syStatus').className = cls || 'muted';
+}
+
+async function renderSync() {
   const d = await S.area.get(['syncConfig', 'syncState']);
   const cfg = d.syncConfig || {};
   const st = d.syncState || {};
-  const chip = $('syncChip');
-  let chipText = '☁ 开启云同步';
+  let chipText = '☁ 登录同步';
   let cls = '';
-  let status = '还没开启。开启后，这台电脑上的记录会上传到你的仓库，并和其他电脑合并。';
+  let status = '';
   if (cfg.enabled) {
     if (st.syncing) {
       chipText = '☁ 同步中…';
       status = '正在同步…';
     } else if (st.lastError) {
-      chipText = '⚠ 同步失败';
+      chipText = st.needsLogin ? '⚠ 需要重新登录' : '⚠ 同步失败';
       cls = 'err';
       status = `同步失败（${ago(st.lastErrorAt)}）：${st.lastError}`;
     } else if (st.lastSyncAt) {
       chipText = `☁ 已同步 · ${ago(st.lastSyncAt)}`;
       cls = 'ok';
-      status = `✓ 已同步到 ${cfg.repo} · ${ago(st.lastSyncAt)} · 云端共 ${st.apps || 0} 条`;
+      status = `✓ ${ago(st.lastSyncAt)}同步 · 云端共 ${st.apps || 0} 条`;
     } else {
       chipText = '☁ 等待同步';
     }
   }
-  chip.textContent = chipText;
-  chip.className = 'sync-chip ' + cls;
-  $('syStatus').textContent = status;
-  $('syStatus').className = cls === 'err' ? 'err' : cls === 'ok' ? 'ok' : 'muted';
-  $('syNow').disabled = $('syOff').disabled = !cfg.enabled;
-  if (fillInputs) {
-    $('syRepo').value = cfg.repo || '';
-    $('syToken').value = '';
-    $('syToken').placeholder = cfg.enabled ? '已保存（不显示），换 token 时再填' : 'github_pat_…';
-    const platform = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '').toLowerCase();
-    $('syDevice').value = cfg.device || (platform.includes('mac') ? 'MacBook' : platform.includes('win') ? 'Windows 台式机' : '');
-  }
+  $('syncChip').textContent = chipText;
+  $('syncChip').className = 'sync-chip ' + cls;
+  $('syIntro').classList.toggle('hidden', !!cfg.enabled);
+  $('syAccount').classList.toggle('hidden', !cfg.enabled);
+  $('syAccount').textContent = cfg.enabled ? `已登录：${cfg.email || 'Google 账号'}` : '';
+  $('sySignIn').textContent = cfg.enabled ? '重新登录' : '用 Google 登录';
+  $('sySignIn').classList.toggle('hidden', !!cfg.enabled && !st.needsLogin);
+  $('syNow').classList.toggle('hidden', !cfg.enabled);
+  $('syOff').classList.toggle('hidden', !cfg.enabled);
+  setSyncStatus(status, cls);
 }
 
 async function syncAction(btn, msg, okText) {
   btn.disabled = true;
-  $('syStatus').className = 'muted';
-  $('syStatus').textContent = '正在连接 GitHub…';
+  setSyncStatus('正在同步…');
   const res = await sendBg(msg);
   btn.disabled = false;
-  await renderSync(false);
-  if (!res || !res.ok) {
-    $('syStatus').className = 'err';
-    $('syStatus').textContent = '✗ ' + ((res && res.error) || '失败');
-  } else if (okText) {
-    $('syStatus').className = 'ok';
-    $('syStatus').textContent = okText(res);
-  }
+  await renderSync();
+  if (!res || !res.ok) setSyncStatus('✗ ' + ((res && res.error) || '失败'), 'err');
+  else if (okText) setSyncStatus(okText(res), 'ok');
   return res;
 }
 
-$('syEnable').onclick = async () => {
-  const res = await syncAction(
-    $('syEnable'),
-    { type: 'JT_SYNC_SETUP', repo: $('syRepo').value, token: $('syToken').value, device: $('syDevice').value },
-    (r) => `✓ 已开启。云端共 ${r.apps} 条${r.received ? `，从云端收到 ${r.received} 条` : ''}${r.pushed ? '，已上传这台电脑的记录' : ''}。`
-  );
-  if (res && res.ok) {
-    $('syToken').value = '';
-    $('syToken').placeholder = '已保存（不显示），换 token 时再填';
+const syncSummary = (r) =>
+  `云端共 ${r.apps} 条${r.received ? `，收到 ${r.received} 条更新` : ''}${r.removed ? `，删除 ${r.removed} 条` : ''}${r.pushed ? '，已上传这台电脑的修改' : ''}`;
+
+$('sySignIn').onclick = async () => {
+  if (!(globalThis.chrome && chrome.identity)) return setSyncStatus('只能在插件里使用', 'err');
+  const btn = $('sySignIn');
+  btn.disabled = true;
+  setSyncStatus('请在弹出的 Google 窗口里选择账号并允许…');
+  let email;
+  try {
+    email = await JT.google.signIn(); // the popup must be opened from this click
+  } catch (e) {
+    btn.disabled = false;
+    return setSyncStatus(/did not approve|closed|cancel/i.test(e.message) ? '已取消登录' : '✗ ' + e.message, 'err');
   }
+  await syncAction(btn, { type: 'JT_SYNC_ENABLE', email }, (r) => `✓ 已登录 ${email}。${syncSummary(r)}。`);
 };
-$('syNow').onclick = () =>
-  syncAction($('syNow'), { type: 'JT_SYNC_NOW' }, (r) => `✓ 同步完成 · 云端共 ${r.apps} 条${r.received ? `，收到 ${r.received} 条更新` : ''}${r.removed ? `，删除 ${r.removed} 条` : ''}`);
+$('syNow').onclick = () => syncAction($('syNow'), { type: 'JT_SYNC_NOW' }, (r) => `✓ 同步完成 · ${syncSummary(r)}`);
 $('syOff').onclick = async () => {
-  if (!confirm('关闭这台电脑的云同步？本地记录和云端数据都会保留，token 会从这台电脑删除。')) return;
-  await syncAction($('syOff'), { type: 'JT_SYNC_DISABLE' }, () => '已关闭。本地和云端数据都还在。');
-  renderSync(true);
+  if (!confirm('退出这台电脑的 Google 登录？本地记录和云端数据都会保留，其他电脑不受影响。')) return;
+  await syncAction($('syOff'), { type: 'JT_SYNC_DISABLE' }, () => '已退出。本地和云端数据都还在。');
 };
 
 $('sClear').onclick = async () => {
@@ -933,7 +932,7 @@ if (globalThis.chrome && chrome.storage && chrome.storage.onChanged) {
       if (full) load();
       else {
         renderEmails();
-        renderSync(false);
+        renderSync();
       }
       full = false;
     }, 200);
@@ -942,13 +941,13 @@ if (globalThis.chrome && chrome.storage && chrome.storage.onChanged) {
 
 function routeFromHash() {
   if (location.hash === '#emails') return $('emailCard').scrollIntoView({ block: 'start' });
-  const m = location.hash.match(/^#id=([\w-]+)/);
-  if (m && m[1] !== state.openId) openDrawer(m[1]);
+  const m = location.hash.match(/^#id=([\w-]+)(?:&tab=(\w+))?/); // e.g. #id=<id>&tab=interviews
+  if (m && m[1] !== state.openId) openDrawer(m[1], m[2]);
 }
 window.addEventListener('hashchange', routeFromHash);
 
 load().then(routeFromHash);
-renderSync(false);
+renderSync();
 // Pull the latest from the cloud whenever the tracker is opened.
 S.area.get('syncConfig').then((d) => d.syncConfig && d.syncConfig.enabled && sendBg({ type: 'JT_SYNC_NOW' }));
-setInterval(() => renderSync(false), 60000); // keep "N 分钟前" fresh
+setInterval(() => renderSync(), 60000); // keep "N 分钟前" fresh
