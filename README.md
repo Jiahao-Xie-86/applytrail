@@ -6,12 +6,30 @@
 
 1. 打开 Chrome，地址栏输入 `chrome://extensions`（Edge 用 `edge://extensions`）
 2. 打开右上角 **开发者模式**
-3. 点 **加载已解压的扩展程序**，选择文件夹 `E:\career\job-tracker`
+3. 点 **加载已解压的扩展程序**，选择插件文件夹（Windows 上是 `E:\career\job-tracker`）
 4. 点浏览器右上角的拼图图标，把 “Job Tracker 求职投递追踪” **固定** 到工具栏
 
 安装后会自动打开追踪表页面。修改代码后，在 `chrome://extensions` 里点这个扩展的 🔄 刷新即可。
 
 > 安装前已经打开的网页，需要刷新一次后自动检测才会生效（手动点图标记录不受影响）。
+
+### 在另一台电脑上（如 MacBook）
+
+插件代码放在 GitHub 私有仓库里（和存数据的 `job-tracker-data` 是两个仓库）。Mac 的终端里：
+
+```bash
+git clone https://github.com/<你的用户名>/job-tracker.git ~/job-tracker
+```
+
+第一次 clone 私有仓库时，Git 会让你登录 GitHub。然后在 Mac 的 Chrome 里 **加载已解压的扩展程序**，选择 `~/job-tracker`（Finder 里按 `Cmd+Shift+G` 输入路径）。
+
+**以后更新插件**：在 Mac 终端运行下面这条，再到 `chrome://extensions` 点 🔄：
+
+```bash
+git -C ~/job-tracker pull
+```
+
+数据不在这个代码仓库里，更新代码不会影响你的投递记录。
 
 ## 三种记录方式
 
@@ -90,10 +108,9 @@
 
 ### 在 MacBook 上
 
-1. 把整个 `job-tracker` 文件夹拷到 Mac 上（U 盘、网盘都行，Mac 上放在一个不会被删的位置）
-2. Mac 的 Chrome 里同样 **加载已解压的扩展程序**（见上面“安装”）
-3. 追踪表 → ☁ 开启云同步，填 **同一个仓库**。token 可以用同一个，也可以再生成一个
-4. 第一次同步时，两台电脑上已有的记录会自动合并，不会互相覆盖
+1. 按上面 “在另一台电脑上” 用 `git clone` 装好插件
+2. 追踪表 → ☁ 开启云同步，填 **同一个数据仓库**（`job-tracker-data`）。token 可以用同一个，也可以再生成一个
+3. 第一次同步时，两台电脑上已有的记录会自动合并，不会互相覆盖
 
 ### 怎么同步
 
