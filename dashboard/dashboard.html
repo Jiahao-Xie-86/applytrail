@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>求职投递追踪</title>
+  <link rel="stylesheet" href="../ui/common.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header class="top">
+    <h1>求职投递追踪</h1>
+    <div class="top-actions">
+      <button id="syncChip" class="sync-chip" title="云同步设置">☁ 开启云同步</button>
+      <button id="addBtn" class="primary">+ 手动添加</button>
+      <button id="exportCsv" title="用 Excel / Google Sheets 打开">导出 CSV</button>
+      <button id="exportJson" title="完整备份，可再导入">备份 JSON</button>
+      <button id="importBtn">导入备份</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+      <button id="settingsBtn">设置</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="backupWarn" class="note banner-note hidden"></div>
+
+    <section id="welcome" class="card welcome hidden">
+      <h2>开始使用</h2>
+      <ol>
+        <li><b>自动记录</b>：在 Greenhouse / Lever / Workday / Ashby / LinkedIn Easy Apply / Indeed 等网站提交申请后，出现 “Thank you for applying” 页面时会自动记录，右下角弹出提示（可撤销）。</li>
+        <li><b>一键记录</b>：在任何职位页面点击浏览器右上角的插件图标（或按 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd>），自动抓取公司、职位、地点、JD，确认后保存。抓不到 JD 时，先在网页上选中 JD 文字再点图标。</li>
+        <li><b>邮件识别</b>：用 Gmail 网页版时，会自动识别 OA 邀请、面试邀请、拒信和 Offer，更新对应投递的状态（可撤销）。</li>
+        <li><b>面试准备</b>：在这里点开任意一条记录，可以记录每轮面试、查看 JD 关键词、签证要求、一键打开面经 / 薪资调研链接。</li>
+      </ol>
+      <p class="muted">数据只保存在本机浏览器里。建议定期点 “备份 JSON”。</p>
+    </section>
+
+    <section class="overview">
+      <div class="tiles" id="tiles"></div>
+      <div class="card chart-card">
+        <div class="card-title">每周投递数 <span class="muted">· 近 12 周</span></div>
+        <div class="chart-wrap" id="chartWrap">
+          <svg id="weekly" role="img" aria-label="每周投递数柱状图"></svg>
+          <div class="tooltip hidden" id="chartTip"></div>
+        </div>
+      </div>
+      <div class="card upcoming-card">
+        <div class="card-title">即将到来的面试</div>
+        <ul id="upcoming" class="upcoming"></ul>
+      </div>
+    </section>
+
+    <section class="card email-card" id="emailCard">
+      <div class="email-head">
+        <div class="card-title">📧 邮件动态</div>
+        <span class="muted" id="gmailStatus"></span>
+      </div>
+      <ul class="email-list" id="emailList"></ul>
+    </section>
+
+    <section class="card list-card">
+      <div class="status-tabs" id="statusTabs"></div>
+      <div class="filters">
+        <input id="q" type="search" placeholder="搜索公司 / 职位 / 地点 / JD / 备注">
+        <select id="fType"></select>
+        <select id="fSource"></select>
+        <select id="fSponsor"></select>
+        <select id="sort">
+          <option value="applied">按投递日期</option>
+          <option value="updated">按最近更新</option>
+          <option value="company">按公司 A→Z</option>
+        </select>
+        <span id="count" class="muted"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="c-star"></th>
+              <th>公司</th>
+              <th>职位</th>
+              <th>类型</th>
+              <th>地点</th>
+              <th>来源</th>
+              <th>投递日期</th>
+              <th>状态</th>
+              <th>下一步</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div id="empty" class="empty hidden">没有符合条件的记录</div>
+    </section>
+  </main>
+
+  <div id="scrim" class="scrim hidden"></div>
+  <aside id="drawer" class="drawer hidden" aria-label="职位详情">
+    <div class="drawer-head">
+      <div class="dh-main">
+        <div class="dh-company" id="dCompany"></div>
+        <div class="dh-title" id="dTitle"></div>
+        <div class="dh-meta" id="dMeta"></div>
+      </div>
+      <div class="dh-actions">
+        <select id="dStatus"></select>
+        <button id="dStar" title="标星">☆</button>
+        <button id="dClose" title="关闭 (Esc)">✕</button>
+      </div>
+    </div>
+    <nav class="tabs" id="dTabs">
+      <button data-tab="info" class="active">信息</button>
+      <button data-tab="interviews">面试记录</button>
+      <button data-tab="prep">面试准备</button>
+      <button data-tab="jd">JD</button>
+      <button data-tab="timeline">时间线</button>
+    </nav>
+    <div class="drawer-body" id="dBody"></div>
+    <div class="drawer-foot">
+      <span id="saveState" class="muted"></span>
+      <button id="dDelete" class="danger">删除这条记录</button>
+    </div>
+  </aside>
+
+  <dialog id="settingsDlg">
+    <form method="dialog" class="settings">
+      <h2>设置</h2>
+      <label class="check"><input type="checkbox" id="sAuto"> 检测到 “投递成功” 页面时自动记录</label>
+      <label class="check"><input type="checkbox" id="sEmail"> 识别 Gmail 里的求职邮件（OA / 面试 / 拒信 / Offer）并更新状态</label>
+      <label>插件弹窗里的默认状态<select id="sDefault"></select></label>
+      <fieldset class="sync-box" id="syncBox">
+        <legend>☁ 云同步（GitHub 私有仓库）</legend>
+        <p class="muted">台式机和 MacBook 填同一个仓库，数据会自动合并。第一次设置：
+          <a href="https://github.com/new" target="_blank" rel="noopener">新建一个 Private 仓库</a>，再
+          <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">生成 token</a>
+          （Repository access 只选这个仓库，Permissions → Contents 选 Read and write）。</p>
+        <label>仓库（用户名/仓库名）<input id="syRepo" placeholder="yourname/job-tracker-data" autocomplete="off" spellcheck="false"></label>
+        <label>Token<input id="syToken" type="password" placeholder="github_pat_…" autocomplete="off"></label>
+        <label>这台电脑的名字（会写在 GitHub 的提交记录里）<input id="syDevice" placeholder="Windows 台式机"></label>
+        <div class="sync-actions">
+          <button type="button" id="syEnable" class="primary">测试并开启</button>
+          <button type="button" id="syNow">立即同步</button>
+          <button type="button" id="syOff" class="danger">关闭同步</button>
+        </div>
+        <p id="syStatus" class="muted"></p>
+      </fieldset>
+      <p class="muted" id="sUsage"></p>
+      <p class="muted">快捷键：<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd> 打开记录弹窗（可在 chrome://extensions/shortcuts 修改）。</p>
+      <div class="settings-actions">
+        <button type="button" id="sClear" class="danger">清空全部数据</button>
+        <button value="close" class="primary">完成</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="../lib/constants.js"></script>
+  <script src="../lib/analyze.js"></script>
+  <script src="../lib/store.js"></script>
+  <script src="../lib/email.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

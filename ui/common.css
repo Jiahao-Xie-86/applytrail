@@ -1,0 +1,101 @@
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f3f6;
+  --border: #e2e5ea;
+  --text: #1a1d23;
+  --muted: #6a707b;
+  --accent: #2f6fde;
+  --accent-soft: #e8effc;
+  --accent-text: #ffffff;
+  --danger: #d03a3a;
+  --ok: #18864b;
+  --warn: #a8590b;
+  --warn-soft: #fdf3e6;
+  --mark: #fff1a8;
+  --focus: rgba(47, 111, 222, 0.35);
+  --radius: 8px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111317;
+    --surface: #191c21;
+    --surface-2: #21252b;
+    --border: #2d3239;
+    --text: #e7e9ec;
+    --muted: #9aa1ac;
+    --accent: #5b8def;
+    --accent-soft: #1e2a40;
+    --danger: #ef6b6b;
+    --ok: #4cc283;
+    --warn: #e8a052;
+    --warn-soft: #2e2416;
+    --mark: #5a4b12;
+    --focus: rgba(91, 141, 239, 0.45);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+input, select, textarea, button { font: inherit; color: inherit; }
+
+input, select, textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  min-width: 0;
+}
+textarea { resize: vertical; line-height: 1.5; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
+
+label { display: flex; flex-direction: column; gap: 3px; color: var(--muted); font-size: 12px; }
+label > input, label > select, label > textarea { color: var(--text); font-size: 13px; }
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 5px 12px;
+  white-space: nowrap;
+}
+button:hover { background: var(--surface-2); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+button.primary:hover { filter: brightness(1.08); }
+button.danger { color: var(--danger); }
+button.ghost { border-color: transparent; background: transparent; color: var(--accent); }
+button.ghost:hover { background: var(--accent-soft); }
+button.link { border: 0; background: none; padding: 0; color: var(--accent); font-size: 12px; }
+
+.hidden { display: none !important; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--muted)); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font-size: 11.5px; padding: 1px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+
+.note { font-size: 12px; padding: 6px 9px; border-radius: 6px; background: var(--warn-soft); color: var(--warn); }

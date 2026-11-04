@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Job Tracker</title>
+  <link rel="stylesheet" href="../ui/common.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div>
+      <div class="brand">求职追踪</div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <button id="openDash" class="ghost">打开追踪表 ↗</button>
+  </header>
+
+  <div id="banner" class="banner hidden"></div>
+  <div id="warn" class="note hidden"></div>
+
+  <form id="form" autocomplete="off">
+    <div class="grid2">
+      <label>公司<input name="company" required></label>
+      <label>职位<input name="title" required></label>
+    </div>
+    <div class="grid2">
+      <label>地点<input name="location"></label>
+      <label>状态<select name="status"></select></label>
+    </div>
+    <div class="grid3">
+      <label>类型<select name="jobType"></select></label>
+      <label>学期 / 届<input name="term" placeholder="Summer 2027"></label>
+      <label>工作方式<select name="workMode"></select></label>
+    </div>
+    <div class="grid2">
+      <label>投递日期<input type="date" name="appliedDate"></label>
+      <label>签证 Sponsor<select name="sponsorship"></select></label>
+    </div>
+    <div id="sponsorNote" class="note hidden"></div>
+    <div class="grid2">
+      <label>薪资<input name="salary"></label>
+      <label>简历版本<input name="resumeVersion" list="resumeList" placeholder="如 SWE-v3"></label>
+    </div>
+    <label>内推 / 联系人<input name="referral" placeholder="谁内推的、HR 名字等"></label>
+    <label>链接<input name="url"></label>
+
+    <div id="keywords" class="chips"></div>
+
+    <details id="jdBox">
+      <summary>JD 职位描述（<span id="jdLen">0</span> 字）</summary>
+      <button type="button" id="useSel" class="link hidden">用页面上选中的文字作为 JD</button>
+      <textarea name="description" rows="9" placeholder="没抓到的话：在网页上选中 JD 文字再打开插件，或直接粘贴到这里"></textarea>
+    </details>
+
+    <label>备注<textarea name="notes" rows="2"></textarea></label>
+
+    <input type="hidden" name="source">
+    <input type="hidden" name="jobId">
+    <input type="hidden" name="postedDate">
+    <input type="hidden" name="deadline">
+
+    <div class="actions">
+      <button type="submit" class="primary" id="saveBtn">保存</button>
+      <span id="msg"></span>
+    </div>
+  </form>
+  <datalist id="resumeList"></datalist>
+
+  <script src="../lib/constants.js"></script>
+  <script src="../lib/analyze.js"></script>
+  <script src="../lib/store.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
