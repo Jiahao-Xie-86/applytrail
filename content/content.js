@@ -62,8 +62,15 @@
   ];
   const WEAK = [/\bapplication (submitted|received|complete)\b/i, /\bsuccessfully submitted\b/i];
   // Workday goes back to the job list with ?Job_Application_ID=… right after you submit. Its
-  // message differs per employer, so the URL is the reliable signal.
-  const SUBMITTED_URL = /[?&](job_application_id|jobapplicationid)=\w/i;
+  // message differs per employer, so the URL is the reliable signal. The id then stays on every
+  // link you open on that site, so only a new id counts: one that was not in the URL before.
+  const appId = (search) => (/[?&](?:job_application_id|jobapplicationid)=(\w+)/i.exec(search) || [])[1] || '';
+  let knownAppId = appId(location.search);
+  try {
+    // A full page load straight from the application form still counts.
+    const ref = document.referrer ? new URL(document.referrer) : null;
+    if (knownAppId && ref && ref.host === location.host && /\/apply(\/|$)/.test(ref.pathname) && appId(ref.search) !== knownAppId) knownAppId = '';
+  } catch {}
   // Job boards show "Application submitted" badges on listings, so only trust strong phrases there.
   const BOARD = /linkedin\.com$|indeed\.com$|glassdoor\.(com|ca)$|joinhandshake\.com$/;
   const CONFIRM_URL = /(thank|confirmation|confirm|success|submitted|post-?apply|complete)/i;
@@ -81,12 +88,13 @@
 
   function check(reason) {
     if (!alive()) return;
-    if (SUBMITTED_URL.test(location.search) && A.isKnownJobHost(host)) {
-      const key = 'submitted|' + location.search;
-      if (!fired.has(key)) {
-        fired.add(key);
-        onApplied(true);
-      }
+    const id = A.isKnownJobHost(host) ? appId(location.search) : '';
+    if (id && id !== knownAppId) {
+      knownAppId = id;
+      // The confirmation text on this page must not record it a second time.
+      fired.add(A.canonicalUrl(location.href));
+      lastState = matchState();
+      onApplied(true);
       return;
     }
     const st = matchState();
@@ -139,6 +147,8 @@
 
     setTimeout(() => { check('load'); rememberJob(); }, 1500);
     setTimeout(() => check('later'), 4000);
+    // Slow single-page sites (Workday) render the posting several seconds after load.
+    [5000, 12000].forEach((ms) => setTimeout(rememberJob, ms));
 
     // Confirmations follow a click on "Submit", so only re-check after user actions.
     let timers = [];
@@ -155,7 +165,7 @@
       if (location.href === lastUrl) return;
       lastUrl = location.href;
       setTimeout(() => check('nav'), 1500);
-      setTimeout(rememberJob, 2000);
+      [2000, 6000].forEach((ms) => setTimeout(rememberJob, ms));
     }, 1000);
   }
 

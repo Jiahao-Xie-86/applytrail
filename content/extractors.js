@@ -300,7 +300,21 @@
     {
       match: /myworkday(jobs|site)\.com$/,
       extract() {
-        const dd = (id) => qa(`[data-automation-id="${id}"] dd`).map(txt).filter(Boolean).join(' | ');
+        // On /details/ pages the job list and "Similar Jobs" sit beside the posting and use the
+        // same automation ids, so take each field from the closest block around the posting's header.
+        const header = q('[data-automation-id="jobPostingHeader"]');
+        const near = (id) => {
+          if (!header) return null; // posting not rendered yet (the panel can take seconds)
+          for (let el = header.parentElement; el; el = el.parentElement) {
+            const hit = q(`[data-automation-id="${id}"]`, el);
+            if (hit) return hit;
+          }
+          return null;
+        };
+        const dd = (id) => {
+          const el = near(id);
+          return el ? qa('dd', el).map(txt).filter(Boolean).join(' | ') : '';
+        };
         // JSON-LD hiringOrganization is the legal entity ("CN05 NVIDIA Shanghai WFOE"), so derive the
         // name from the URL: nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite -> "NVIDIA",
         // unitytech.wd1.myworkdayjobs.com/en-US/Unity -> "Unity" (not the tenant id "Unitytech").
@@ -316,12 +330,12 @@
         const pretty = (s) => (s === s.toLowerCase() ? A.titleCase(s) : s);
         const company = related ? pretty(fromSite) : /^wd\d+$/.test(sub) ? '' : A.titleCase(sub);
         return {
-          title: first(['[data-automation-id="jobPostingHeader"]']),
+          title: txt(header),
           company,
           location: dd('locations'),
           employmentType: dd('time'),
           jobId: dd('requisitionId'),
-          description: first(['[data-automation-id="jobPostingDescription"]']),
+          description: txt(near('jobPostingDescription')),
         };
       },
     },
@@ -401,6 +415,10 @@
       const jp = findJsonLdJob();
       if (jp) ld = fromJsonLd(jp);
     } catch (e) { console.debug('[JobTracker] JSON-LD parse failed', e); }
+    // Single-page sites (Workday /details/, LinkedIn) can keep the JSON-LD of the first posting
+    // after you open another one: ignore it when it names a different job.
+    const flat = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (site.title && ld.title && !flat(site.title).includes(flat(ld.title)) && !flat(ld.title).includes(flat(site.title))) ld = {};
 
     const pick = (...vals) => vals.find((v) => v && String(v).trim()) || '';
     let gen = {};

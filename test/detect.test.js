@@ -10,8 +10,9 @@ const ok = (name, cond, extra = '') => {
   console.log(cond ? 'PASS' : 'FAIL', name, extra);
 };
 
-function makePage(url, bodyHtml) {
-  const dom = new JSDOM(`<!doctype html><html><head><title>t</title></head><body>${bodyHtml}</body></html>`, { url, runScripts: 'outside-only' });
+function makePage(url, bodyHtml, opts = {}) {
+  const html = opts.html || `<!doctype html><html><head><title>t</title></head><body>${bodyHtml}</body></html>`;
+  const dom = new JSDOM(html, { url, referrer: opts.referrer, runScripts: 'outside-only' });
   const w = dom.window;
   Object.defineProperty(w.HTMLElement.prototype, 'innerText', { get() { return this.textContent; } });
   const sent = [];
@@ -96,6 +97,43 @@ const JD = '<h2>Responsibilities</h2><p>' + 'Build backend services in Python an
     p.w.document.body.insertAdjacentHTML('beforeend', ' <div role="dialog"><h2>You have submitted a Job Application</h2></div>');
     await sleep(1500);
     ok('workday: "You have submitted" detected', p.sent.some((m) => m.type === 'JT_APPLY_DETECTED'));
+  }
+
+  // 3e) Workday /details/ page: job list + "Similar Jobs" beside the posting, opened from a link
+  //     that still carries the id of an earlier application.
+  {
+    const WD = 'https://unitytech.wd1.myworkdayjobs.com/en-US/Unity';
+    const html = fs.readFileSync(__dirname + '/fixtures/workday-details.html', 'utf8');
+    const p = makePage(`${WD}/details/XMLNAME--Req-6087--Software-Developer_JOBREQ-2615965?q=machine+learning&source=LinkedIn&Job_Application_ID=0000test`, '', { html });
+    await sleep(1700);
+    const seen = p.sent.find((m) => m.type === 'JT_JOB_SEEN');
+    ok('workday details: posting fields only, not the job list', seen && seen.job.title === 'Machine Learning Engineer-Internship' && seen.job.location === 'Mountain View, CA, USA | Remote, Washington, USA' && seen.job.jobId === 'JOBREQ-2615965', seen ? `${seen.job.location} / ${seen.job.jobId}` : '');
+    ok('workday details: JD is the posting description', seen && /^The opportunity/.test(seen.job.description) && !/Similar Jobs|JOBS FOUND/.test(seen.job.description));
+    p.w.history.pushState({}, '', '/en-US/Unity/details/Staff-ML-Engineer_JOBREQ-2616040?q=machine+learning&source=LinkedIn&Job_Application_ID=0000test');
+    p.w.document.body.dispatchEvent(new p.w.MouseEvent('click', { bubbles: true }));
+    await sleep(2800);
+    ok('workday details: an old application id is not a new submission', !p.sent.some((m) => m.type === 'JT_APPLY_DETECTED'));
+    // Opening another posting in the panel leaves the first posting's JSON-LD in <head>.
+    p.w.document.querySelector('[data-automation-id="jobPostingHeader"]').textContent = 'Staff Machine Learning Engineer';
+    const other = p.w.JT.extract();
+    ok('workday details: stale JSON-LD of another posting ignored', other.title === 'Staff Machine Learning Engineer' && other.postedDate === '', other.postedDate);
+    // Applying again in the same tab gives a new id.
+    p.w.history.pushState({}, '', '/en-US/Unity/job/Austin/Staff-ML-Engineer_JOBREQ-2616040/apply/applyManually?source=LinkedIn&Job_Application_ID=0000test');
+    await sleep(1500);
+    p.w.history.pushState({}, '', '/en-US/Unity?source=LinkedIn&Job_Application_ID=1111next');
+    await sleep(2800);
+    ok('workday details: a new application id is a submission', p.sent.filter((m) => m.type === 'JT_APPLY_DETECTED').length === 1);
+    p.w.document.querySelector('[data-automation-id="jobDetails"]').remove(); // panel not rendered yet
+    const bare = p.w.JT.extract();
+    ok('workday details: nothing taken from the job list before the posting renders', !/Singapore|2 Locations|Austin|Part time/.test(`${bare.location} ${bare.employmentType}`), `${bare.location} / ${bare.employmentType}`);
+  }
+
+  // 3f) Workday list page loaded straight from the application form (full page load).
+  {
+    const WD = 'https://acme.wd5.myworkdayjobs.com/en-US/External';
+    const p = makePage(`${WD}?Job_Application_ID=2222abcd`, '<p>12 JOBS FOUND</p>', { referrer: `${WD}/job/NY/Analyst_R1/apply/applyManually` });
+    await sleep(1700);
+    ok('workday: full load from the apply form detected', p.sent.filter((m) => m.type === 'JT_APPLY_DETECTED').length === 1);
   }
 
   // 3d) A copy cut off by an extension reload hands over to a fresh, re-injected copy.
