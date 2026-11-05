@@ -148,6 +148,15 @@ const JD = '<h2>Responsibilities</h2><p>' + 'Build backend services in Python an
     ok('reinjection: new copy takes over', p.listener() !== before);
   }
 
+  // 3g) A "thank you for applying" email open in Gmail, or a search for one: not an application.
+  for (const url of ['https://mail.google.com/mail/u/0/#inbox/FMfcgz', 'https://www.google.com/search?q=workday+application+submitted+jobs']) {
+    const p = makePage(url, '<h2>Thank you for applying to Unity</h2><p>You have successfully submitted your application for Machine Learning Engineer-Internship.</p>');
+    await sleep(1700);
+    p.w.document.body.dispatchEvent(new p.w.MouseEvent('click', { bubbles: true }));
+    await sleep(1400);
+    ok(`not a job site: ${new URL(url).hostname}`, p.sent.length === 0, JSON.stringify(p.sent.map((m) => m.type)));
+  }
+
   // 4) Unrelated site -> content script stays idle
   {
     const p = makePage('https://news.example.com/article/1', '<h1>Thank you for applying sunscreen</h1>');

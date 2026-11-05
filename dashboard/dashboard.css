@@ -138,7 +138,7 @@ td select.status-select { width: auto; padding: 2px 6px; font-size: 12px; border
 .links a { text-decoration: none; font-size: 12.5px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--border); color: var(--text); background: var(--surface); }
 .links a:hover { border-color: var(--accent); color: var(--accent); }
 
-.jd-tools { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+.jd-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; }
 .jd-view { white-space: pre-wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; line-height: 1.65; }
 .jd-view mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1px; }
 
@@ -180,3 +180,5 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.3); }
   .ev .pill { display: none; }
   .ev-actions { grid-column: 2; flex-wrap: wrap; }
 }
+.jd-msg { margin-bottom: 10px; }
+.jd-msg.ok { color: var(--ok); background: none; padding-left: 0; }

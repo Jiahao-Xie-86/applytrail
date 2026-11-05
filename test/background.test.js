@@ -39,7 +39,15 @@ const chrome = {
   alarms: { create() {}, onAlarm: { addListener() {} } },
   action: { setBadgeText: async () => {}, setBadgeBackgroundColor: async () => {} },
 };
-const ctx = vm.createContext({ chrome, console, crypto, structuredClone, URL, URLSearchParams, Date, setTimeout, clearTimeout, fetch, TextEncoder, TextDecoder, btoa, atob });
+// No network in tests: job APIs answer from fetchReply (404 when it returns nothing).
+const fetched = [];
+let fetchReply = () => null;
+const fakeFetch = async (url) => {
+  fetched.push(String(url));
+  const body = fetchReply(String(url));
+  return { ok: !!body, status: body ? 200 : 404, text: async () => (typeof body === 'string' ? body : JSON.stringify(body)), json: async () => body };
+};
+const ctx = vm.createContext({ chrome, console, crypto, structuredClone, URL, URLSearchParams, Date, setTimeout, clearTimeout, fetch: fakeFetch, AbortController, TextEncoder, TextDecoder, btoa, atob });
 ctx.globalThis = ctx;
 ctx.importScripts = (...files) => files.forEach((f) => vm.runInContext(fs.readFileSync(ROOT + f, 'utf8'), ctx));
 vm.runInContext(fs.readFileSync(ROOT + 'background.js', 'utf8'), ctx);
@@ -117,6 +125,26 @@ const fullJob = {
   ok('inject: ATS tab in all frames', by(31).length === 1 && by(31)[0].target.allFrames === true && by(31)[0].files.includes('content/content.js'), JSON.stringify(by(31)));
   ok('inject: other site top frame', by(32).length === 1 && by(32)[0].target.allFrames === false);
   ok('inject: gmail gets gmail.js too', by(33).some((x) => x.files.includes('content/gmail.js')));
+
+  // Gmail showing a "thank you for applying" email is not an application to Google.
+  const gmail = 'https://mail.google.com/mail/u/0/#inbox/FMfcgz';
+  await send({ type: 'JT_APPLY_DETECTED', job: { url: gmail, company: 'Google', title: '' } }, { id: 40, url: gmail });
+  ok('gmail page: nothing recorded', !apps().some((a) => a.company === 'Google'));
+
+  // Workday: the JD comes from the posting API, replacing text scraped from a /details/ page.
+  const WD = 'https://acme.wd5.myworkdayjobs.com/en-US/External';
+  fetchReply = (url) =>
+    url === 'https://acme.wd5.myworkdayjobs.com/wday/cxs/acme/External/job/ML-Intern_R99'
+      ? { jobPostingInfo: { title: 'ML Intern', jobDescription: '<p><b>About the role</b></p><ul><li>Train models in PyTorch</li></ul><p>' + 'We build data platforms. '.repeat(20) + '</p>', location: 'New York, NY', additionalLocations: ['Remote, USA'], timeType: 'Full time', jobReqId: 'R99' } }
+      : null;
+  const listy = 'Posted Today. Posted Yesterday. Posted 3 Days Ago. 31 JOBS FOUND. ' + 'Some text. '.repeat(40);
+  await send({ type: 'JT_JOB_SEEN', job: { url: WD + '/details/ML-Intern_R99?q=ml', title: 'ML Intern', company: 'Acme', location: 'Singapore | 2 Locations | New York, NY', description: listy } }, { id: 41 });
+  await send({ type: 'JT_APPLY_DETECTED', job: { url: WD + '?Job_Application_ID=new1', company: 'Acme' } }, { id: 41 });
+  await new Promise((r) => setTimeout(r, 50));
+  const acme = apps().find((a) => a.company === 'Acme' && a.title === 'ML Intern');
+  ok('official JD: fetched from the Workday API', fetched.includes('https://acme.wd5.myworkdayjobs.com/wday/cxs/acme/External/job/ML-Intern_R99'), JSON.stringify(fetched));
+  ok('official JD: replaces the scraped text', acme && /^About the role\n/.test(acme.description) && /• Train models in PyTorch/.test(acme.description) && !/JOBS FOUND/.test(acme.description), acme && JSON.stringify(acme.description.slice(0, 80)));
+  ok('official JD: location from the posting', acme && acme.location === 'New York, NY | Remote, USA' && acme.keywords.includes('PyTorch'), acme && acme.location);
 
   // Auto-detect off -> nothing recorded.
   await S.setSettings({ autoDetect: false });

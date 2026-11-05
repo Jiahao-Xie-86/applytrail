@@ -29,7 +29,9 @@ Every copy has the same extension ID (fixed by `"key"` in `manifest.json`), so G
 | **One click** | On any job posting, click the toolbar icon (or press `Alt+Shift+J`). Company, title, location, salary, visa sponsorship and the JD are filled in; check and save. You can also save it as *Wishlist*. |
 | **Manual** | **+ Add manually** in the tracker. |
 
-If the JD is not picked up, select the JD text on the page and then click the icon. The selection is used as the JD.
+For postings on **Workday, Greenhouse, Lever and Ashby**, the JD is taken from the site's public job API, the same data the career page loads, so it is the exact posting text whatever the page layout (the popup says so). This also happens when an application is recorded automatically. On other sites the JD is read from the page; if it looks incomplete (too short, or mixed with a job list), the popup and the tracker warn you.
+
+If the JD is not picked up, select the JD text on the page and then click the icon. The selection is used as the JD. In the tracker, **JD → ↻ Get again** fetches the JD from the posting link.
 
 Confirmation pages rarely include the JD, so automatic recording fills in details from the posting you viewed last in the same tab (or in the LinkedIn tab that opened the application).
 

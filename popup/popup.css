@@ -30,3 +30,7 @@ details textarea { margin-top: 6px; font-size: 12px; }
 .actions .primary { padding: 7px 22px; }
 #msg { font-size: 12px; color: var(--ok); }
 #msg.err { color: var(--danger); }
+
+.jd-src { font-size: 12px; color: var(--muted); margin: 2px 0 6px; }
+.jd-src.ok { color: var(--ok); }
+.jd-src.bad { color: var(--warn); }

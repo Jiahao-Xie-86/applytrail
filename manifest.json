@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "default_locale": "en",
   "homepage_url": "https://jiahao-xie-86.github.io/applytrail/",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4P/NhkhLLKKULgg4w5hc4EDNmvOwYzVGdv99Tt2axcCCo/Nl36HmvxTk6HJzKuSc8rANRg0Z2bQLWTT+GtYi/HYhwBDtXE/lMV5XugB8rm2wHX2EzEb/uIlfR6RpZGMa3hQgRxPTxLEmQaPRogFa/kzcHVcK9mEAyoX93s7VRMZeYOCJCfUF6s4kKBNeSqWYy479L7LRIdgoV3RyskXlCcpjtPqc9wpEOdulzTcYr/QN5e99uXrGl+qxknhMM1HtrqdLYr/5upM4dN7hGzWtUKv5awdqkaXeM2xe6F/QOWRGBNDgPW4qOF1rZQVx3VmeUS6/VTeOA1zgkniDszofsQIDAQAB",
@@ -37,7 +37,7 @@
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
-      "exclude_matches": ["*://*.greenhouse.io/*", "*://*.lever.co/*", "*://*.myworkdayjobs.com/*", "*://*.myworkdaysite.com/*", "*://*.ashbyhq.com/*", "*://*.icims.com/*", "*://*.jobvite.com/*", "*://*.smartrecruiters.com/*", "*://*.workable.com/*", "*://*.bamboohr.com/*", "*://*.breezy.hr/*", "*://*.recruitee.com/*", "*://*.rippling.com/*"],
+      "exclude_matches": ["*://mail.google.com/*", "*://*.greenhouse.io/*", "*://*.lever.co/*", "*://*.myworkdayjobs.com/*", "*://*.myworkdaysite.com/*", "*://*.ashbyhq.com/*", "*://*.icims.com/*", "*://*.jobvite.com/*", "*://*.smartrecruiters.com/*", "*://*.workable.com/*", "*://*.bamboohr.com/*", "*://*.breezy.hr/*", "*://*.recruitee.com/*", "*://*.rippling.com/*"],
       "js": ["lib/analyze.js", "content/extractors.js", "content/content.js"],
       "run_at": "document_idle"
     },

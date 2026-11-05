@@ -431,7 +431,7 @@
     let description = descs[0] || '';
     if (description.length < 300) description = descs.reduce((a, b) => (b.length > a.length ? b : a), '');
 
-    const knownHost = A.isKnownJobHost(host);
+    const knownHost = A.isKnownJobHost(host) || A.isCompanyHost(host);
     const job = {
       url,
       title: A.oneLine(pick(site.title, ld.title, gen.title)).slice(0, 200),

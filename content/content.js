@@ -43,6 +43,7 @@
 
   const JOBISH = /(career|jobs?\b|jobs?[/.-]|apply|application|recruit|talent|hiring|position|opening|vacanc|requisition|join-?us|work-?with-?us)/i;
   function isJobRelated() {
+    if (A.isNotJobSite(location.href)) return false; // Gmail showing a "thank you for applying" email
     if (A.isKnownJobHost(host)) return true;
     if (!isTop) return false; // iframes: only the ATS hosts listed in the manifest
     return JOBISH.test(location.hostname + location.pathname + location.search) || JT.hasJsonLdJob();

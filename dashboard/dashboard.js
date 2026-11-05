@@ -393,6 +393,7 @@ async function openDrawer(id, tab) {
   state.openId = id;
   state.tab = tab || 'info';
   state.jdEdit = false;
+  state.jdMsg = '';
   history.replaceState(null, '', '#id=' + id);
   $('drawer').classList.remove('hidden');
   $('scrim').classList.remove('hidden');
@@ -536,8 +537,14 @@ function jdTab(a) {
       <textarea id="jdText" rows="28" placeholder="${t('把职位描述粘贴到这里')}">${esc(a.description)}</textarea>`;
   }
   const d = a.description || '';
-  return `<div class="jd-tools"><button data-act="jdEdit">${t('编辑 / 粘贴 JD')}</button>${d ? `<button data-act="jdCopy">${t('复制全文')}</button>` : ''}
+  const site = a.url ? JT.jd.apiName(a.url) : '';
+  const problem = d ? JT.jd.problem(d) : '';
+  const warn = problem === 'list' ? t('⚠ 这段 JD 混进了职位列表的内容。') : problem === 'short' ? t('⚠ 这段 JD 很短，可能没读全。') : '';
+  const fetchBtn = a.url ? `<button data-act="jdFetch">${site ? t('↻ 从 {site} 重新获取', { site }) : t('↻ 从职位链接重新获取')}</button>` : '';
+  const msg = state.jdMsg || (warn ? warn + (a.url ? ' ' + t('可以点「重新获取」。') : '') : '');
+  return `<div class="jd-tools"><button data-act="jdEdit">${t('编辑 / 粘贴 JD')}</button>${fetchBtn}${d ? `<button data-act="jdCopy">${t('复制全文')}</button>` : ''}
       <span class="muted">${t('{n} 字', { n: d.length.toLocaleString() })}${d ? ' · ' + t('高亮为识别出的技能关键词') : ''}</span></div>
+    ${msg ? `<div class="note jd-msg${msg.startsWith('✓') ? ' ok' : ''}">${esc(msg)}</div>` : ''}
     ${d ? `<div class="jd-view">${highlightJD(d)}</div>` : `<p class="muted">${t('还没有 JD。职位下线后原链接就看不到了，建议投递时保存一份。')}</p>`}`;
 }
 
@@ -684,6 +691,22 @@ $('dBody').addEventListener('click', async (e) => {
     }
     state.jdEdit = false;
     scheduleSave();
+    renderDrawer();
+  } else if (act === 'jdFetch') {
+    btn.disabled = true;
+    btn.textContent = t('正在获取…');
+    const got = await JT.jd.fetch(a.url, { page: true });
+    if (current !== a) return; // another record was opened meanwhile
+    if (!got) {
+      state.jdMsg = t('没能从这个链接取到 JD：职位可能已下线，或这个网站的 JD 只在浏览器里显示。可以打开职位页，选中 JD 文字后点插件图标。');
+    } else if (a.description && !JT.jd.problem(a.description) && A.cleanText(a.description) !== got.description && !confirm(t('用招聘网站上的 JD 替换当前 JD？'))) {
+      state.jdMsg = '';
+    } else {
+      JT.jd.applyTo(a, got);
+      state.jdMsg = t('✓ 已更新 JD（来自 {site}）', { site: got.via === 'page' ? t('职位页面') : got.via });
+      renderDrawerHead();
+      scheduleSave();
+    }
     renderDrawer();
   } else if (act === 'jdCopy') {
     await navigator.clipboard.writeText(a.description || '');

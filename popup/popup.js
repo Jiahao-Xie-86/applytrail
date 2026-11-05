@@ -7,6 +7,7 @@ const $ = (id) => document.getElementById(id);
 let baseJob = {}; // what was extracted from the page (keeps fields the form doesn't show)
 let existing = null;
 let selection = '';
+let usedSelection = false;
 
 function fillSelect(name, items) {
   form.elements[name].innerHTML = items.map((x) => `<option value="${x.id}">${x.label}</option>`).join('');
@@ -74,14 +75,22 @@ async function init() {
   const resumes = [...new Set(apps.map((a) => a.resumeVersion).filter(Boolean))];
   $('resumeList').innerHTML = resumes.map((r) => `<option value="${r.replace(/"/g, '&quot;')}">`).join('');
 
-  const res = tab && /^https?:/.test(tab.url || '') ? await extractFromTab(tab) : null;
-  baseJob = res && res.ok ? res.job : { url: (tab && tab.url) || '' };
+  // Gmail, search results: not a job page, so don't record "Google" from the address.
+  const notJob = !!tab && A.isNotJobSite(tab.url || '');
+  const res = tab && /^https?:/.test(tab.url || '') && !notJob ? await extractFromTab(tab) : null;
+  baseJob = res && res.ok ? res.job : { url: notJob ? '' : (tab && tab.url) || '' };
   selection = (res && res.selection) || '';
   if (selection.length > 150) {
     $('useSel').classList.remove('hidden');
-    if ((baseJob.description || '').length < 300) baseJob = A.enrich({ ...baseJob, description: A.cleanText(selection), keywords: undefined });
+    if ((baseJob.description || '').length < 300) {
+      baseJob = A.enrich({ ...baseJob, description: A.cleanText(selection), keywords: undefined });
+      usedSelection = true;
+    }
   }
-  if (!res || !res.ok) {
+  if (notJob) {
+    $('warn').textContent = t('这是邮箱或搜索页面，不是职位页面：请在职位页面上点插件，或在这里手动填写。');
+    $('warn').classList.remove('hidden');
+  } else if (!res || !res.ok) {
     $('warn').textContent = t('无法自动读取这个页面，可以手动填写（或先刷新页面再试）。');
     $('warn').classList.remove('hidden');
   } else if (!baseJob.description) {
@@ -110,6 +119,44 @@ async function init() {
     });
     if (!baseJob.description) $('jdBox').open = true;
   }
+  if (res && res.ok) await officialJD();
+}
+
+// Postings on Workday, Greenhouse, Lever and Ashby: take the JD from the ATS's job API, which is
+// the exact posting text, instead of what was read from the page layout.
+async function officialJD() {
+  const box = form.elements.description;
+  const src = $('jdSource');
+  const show = (text, cls) => {
+    src.textContent = text;
+    src.className = 'jd-src' + (cls ? ' ' + cls : '');
+  };
+  const site = JT.jd.apiName(baseJob.url);
+  const problem = JT.jd.problem(box.value);
+  const keepSaved = existing && !JT.jd.problem(existing.description); // already has a good JD
+  if (!site || usedSelection || keepSaved) {
+    if (problem === 'list' || (problem === 'short' && !usedSelection)) show(t('⚠ 这段 JD 可能不完整（太短，或混进了职位列表）：可以在网页上选中 JD 文字后再点插件。'), 'bad');
+    return;
+  }
+  const before = box.value;
+  show(t('正在从 {site} 读取官方 JD…', { site }));
+  const got = await JT.jd.fetch(baseJob.url);
+  if (box.value !== before) {
+    src.className = 'jd-src hidden'; // the user started editing: leave their text alone
+    return;
+  }
+  if (!got) {
+    show(problem ? t('⚠ 没能从 {site} 读取官方 JD，网页上读到的 JD 可能不完整。', { site }) : t('没能从 {site} 读取官方 JD，下面是从网页读到的内容。', { site }), problem ? 'bad' : '');
+    return;
+  }
+  const parts = (v) => String(v || '').split(' | ').filter(Boolean).length;
+  box.value = got.description;
+  if (!form.elements.title.value && got.title) form.elements.title.value = A.oneLine(got.title);
+  if (got.location && (!form.elements.location.value || parts(form.elements.location.value) > parts(got.location))) form.elements.location.value = got.location;
+  if (!form.elements.jobId.value && got.jobId) form.elements.jobId.value = got.jobId;
+  refreshDerived();
+  if (/JD/.test($('warn').textContent)) $('warn').classList.add('hidden');
+  show(t('✓ JD 取自 {site} 官方职位数据（与职位页原文一致）', { site }), 'ok');
 }
 
 function openDashboard(id) {

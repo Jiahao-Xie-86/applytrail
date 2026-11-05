@@ -1,11 +1,12 @@
 // Service worker: records auto-detected applications, keeps per-tab "last job
 // viewed" cache, and shows a ✓ badge on pages that are already tracked.
-importScripts('lib/constants.js', 'lib/i18n.js', 'lib/analyze.js', 'lib/store.js', 'lib/email.js', 'lib/google.js', 'lib/sync.js');
+importScripts('lib/constants.js', 'lib/i18n.js', 'lib/analyze.js', 'lib/jd.js', 'lib/store.js', 'lib/email.js', 'lib/google.js', 'lib/sync.js');
 
 const A = JT.analyze;
 const S = JT.store;
 const E = JT.email;
 const Y = JT.sync;
+const J = JT.jd;
 const t = JT.i18n.t;
 const langReady = JT.i18n.init();
 // Sync errors are stored as text, so let the language load first.
@@ -123,6 +124,20 @@ async function resolveJob(current, tab) {
   return merged;
 }
 
+// The ATS's own copy of the JD (the exact posting text, from Workday, Greenhouse, Lever or Ashby)
+// replaces what was read from the page. A record that already existed keeps a JD that looks fine.
+async function fillJD(appId, created) {
+  try {
+    const app = await S.get(appId);
+    if (!app || !J.apiName(app.url) || (!created && !J.problem(app.description))) return;
+    const got = await J.fetch(app.url);
+    const fresh = got && (await S.get(appId)); // undone in the meantime → gone
+    if (fresh) await S.save(J.applyTo(fresh, got));
+  } catch (e) {
+    console.debug('[ApplyTrail] JD fetch failed', e);
+  }
+}
+
 // The content script only renders; all toast text is built here in the UI language.
 // buttons: [{ act: 'open' | 'undo', label, primary }]
 function toast(tabId, payload) {
@@ -138,7 +153,7 @@ const handlers = {
 
   async JT_APPLY_DETECTED({ job }, sender) {
     const tab = sender.tab;
-    if (!tab) return;
+    if (!tab || A.isNotJobSite(tab.url)) return; // e.g. a "thank you for applying" email in Gmail
     const settings = await S.getSettings();
     if (!settings.autoDetect) return;
     await langReady;
@@ -156,6 +171,7 @@ const handlers = {
     }
     const prevStatus = existing ? existing.status : null;
     const { app, created } = await S.upsertFromJob(resolved, 'applied');
+    fillJD(app.id, created);
     toast(tab.id, {
       mode: 'saved', appId: app.id, created, prevStatus, title: app.title, company: app.company,
       head: app.title ? t('✓ 已自动记录投递') : t('✓ 已记录投递，但信息不全'),
@@ -187,6 +203,7 @@ const handlers = {
     await langReady;
     const events = await E.process(emails, account);
     const changed = events.filter((e) => e.state === 'applied');
+    for (const e of changed) if (e.created) fillJD(e.appId, true);
     const pending = events.filter((e) => e.state === 'unmatched' || e.state === 'ambiguous');
     if (!sender.tab || (!changed.length && !pending.length)) return;
     const st = (id) => JT.label(JT.STATUSES, id);
