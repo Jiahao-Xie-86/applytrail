@@ -51,7 +51,7 @@ t('{n} 天无回音', { n: 21 })        // placeholders work in both languages
   - `https://pbdigaoohikokfaehfdfajdgdlgejmbp.chromiumapp.org/` — unpacked builds (ID fixed by `"key"` in `manifest.json`)
   - `https://<store item ID>.chromiumapp.org/` — the Chrome Web Store build
 - The client ID is in `lib/google.js` (`G.CLIENT_ID`). It is not a secret. The implicit flow needs no client secret.
-- While the consent screen is in *Testing*, only listed test users can sign in and sign-in expires every 7 days. Publishing needs the home page and privacy policy (`docs/`) on an authorized domain (`jiahao-xie-86.github.io`).
+- The consent screen is **In production** (since 2026-11-05), app name *ApplyTrail*, home page and privacy policy served from `docs/` on GitHub Pages; authorized domains `chromiumapp.org` and `jiahao-xie-86.github.io`. No logo is uploaded: adding one would require Google's brand verification. Only non-sensitive scopes are used, so there is no user cap and no "unverified app" screen.
 
 **Forks:** create your own OAuth client, put its ID in `G.CLIENT_ID`, and either keep the `"key"` (ID `pbdigaoohikokfaehfdfajdgdlgejmbp`) or replace it with your own and register the matching redirect URI.
 
