@@ -49,19 +49,23 @@ t('{n} 天无回音', { n: 21 })        // placeholders work in both languages
 - OAuth consent screen: External, scopes `openid`, `email`, `.../auth/drive.appdata` (non-sensitive).
 - OAuth client "Job Tracker extension", type *Web application*. Its **Authorized redirect URIs** must contain `https://<extension-id>.chromiumapp.org/` for every extension ID that signs in:
   - `https://pbdigaoohikokfaehfdfajdgdlgejmbp.chromiumapp.org/` — unpacked builds (ID fixed by `"key"` in `manifest.json`)
-  - `https://<store item ID>.chromiumapp.org/` — the Chrome Web Store build
+  - `https://<store item ID>.chromiumapp.org/` — only needed if a Chrome Web Store build is ever published
 - The client ID is in `lib/google.js` (`G.CLIENT_ID`). It is not a secret. The implicit flow needs no client secret.
 - The consent screen is **In production** (since 2026-11-05), app name *ApplyTrail*, home page and privacy policy served from `docs/` on GitHub Pages; authorized domains `chromiumapp.org` and `jiahao-xie-86.github.io`. No logo is uploaded: adding one would require Google's brand verification. Only non-sensitive scopes are used, so there is no user cap and no "unverified app" screen.
 
 **Forks:** create your own OAuth client, put its ID in `G.CLIENT_ID`, and either keep the `"key"` (ID `pbdigaoohikokfaehfdfajdgdlgejmbp`) or replace it with your own and register the matching redirect URI.
 
-## Releasing to the Chrome Web Store
+## Releasing
 
-1. Bump `version` in `manifest.json`.
-2. `node scripts/pack.js` → `dist/applytrail-<version>.zip` (runs the translation check; drops the dev-only `"key"`).
-3. Developer Dashboard → the item → **Package** → upload → **Submit for review**. Listing text is in `store/listing.md`, screenshots in `store/screenshots/`.
+ApplyTrail is distributed through this repository; it is not in the Chrome Web Store.
 
-After the first upload, the store's public key (Package → *View public key*) can replace `"key"` in `manifest.json`, so unpacked builds get the same ID as the store build and share one redirect URI.
+1. Bump `version` in `manifest.json` and run `npm test`.
+2. Commit and push to `main`. The download link in the README and on the website always points to the latest `main`.
+3. Users update by downloading again, replacing the files in their folder and clicking ↻ in `chrome://extensions`. Keep the `"key"` in `manifest.json` unchanged: it keeps the extension ID (and therefore the users' stored data and the Google sign-in redirect URI) the same.
+
+### If it is ever published to the Chrome Web Store
+
+The registration fee is a one-time US$5. `node scripts/pack.js` builds `dist/applytrail-<version>.zip` (runs the translation check and drops the dev-only `"key"`); listing text, screenshots and the promo tile are in `store/`. After the first upload, add `https://<store item ID>.chromiumapp.org/` to the OAuth client's redirect URIs, or put the store's public key (Package → *View public key*) into `"key"` so unpacked and store builds share one ID.
 
 ## Tests
 

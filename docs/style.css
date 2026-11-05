@@ -48,7 +48,6 @@ code { font-size: 0.9em; overflow-wrap: anywhere; }
   border: 1px solid var(--border); color: var(--text); background: var(--surface);
 }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
-.btn.disabled { opacity: 0.6; pointer-events: none; }
 
 .shot { max-width: 1040px; margin: 32px auto 0; padding: 0 16px; }
 .shot img { display: block; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); }

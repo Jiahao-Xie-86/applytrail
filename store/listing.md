@@ -1,5 +1,7 @@
 # Chrome Web Store listing
 
+> Not submitted: ApplyTrail is distributed through GitHub for now. Kept for a possible store release later.
+
 What to enter in the Developer Dashboard, tab by tab. Upload `dist/applytrail-<version>.zip` from `node scripts/pack.js`.
 
 ## Package

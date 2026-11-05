@@ -8,16 +8,18 @@ A Chrome extension (also works in Edge) that keeps track of your internship and 
 
 ## Install
 
-**Chrome Web Store:** coming soon (in review).
+ApplyTrail is installed from this repository (it is not in the Chrome Web Store). It works in Chrome and Edge.
 
-**From source** (works now):
-
-1. Download this repository ([zip](https://github.com/Jiahao-Xie-86/applytrail/archive/refs/heads/main.zip)) and unzip it.
+1. [Download the zip](https://github.com/Jiahao-Xie-86/applytrail/archive/refs/heads/main.zip) and unzip it to a folder you will keep. Chrome loads the extension from that folder, so do not delete it.
 2. Open `chrome://extensions` (Edge: `edge://extensions`) and turn on **Developer mode**.
 3. Click **Load unpacked** and select the folder that contains `manifest.json`.
 4. Pin ApplyTrail to the toolbar. The tracker opens after installing.
 
 Pages that were already open before installing need a refresh before automatic recording works there.
+
+**Updating:** download the zip again, replace the files in the same folder, and click ↻ on ApplyTrail in `chrome://extensions`. Your records stay. Do not click **Remove**: that deletes the records stored in the browser, unless you sync with Google.
+
+Every copy has the same extension ID (fixed by `"key"` in `manifest.json`), so Google sign-in works for everyone who installs this way.
 
 ## Three ways to record an application
 

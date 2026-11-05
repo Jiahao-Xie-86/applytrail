@@ -8,16 +8,18 @@
 
 ## 安装
 
-**Chrome 应用商店：** 即将上架（审核中）。
+ApplyTrail 从这个仓库安装（没有上架 Chrome 应用商店），Chrome 和 Edge 都能用。
 
-**从源代码安装**（现在就能用）：
-
-1. 下载这个仓库（[zip](https://github.com/Jiahao-Xie-86/applytrail/archive/refs/heads/main.zip)）并解压
+1. [下载 zip](https://github.com/Jiahao-Xie-86/applytrail/archive/refs/heads/main.zip)，解压到一个会一直保留的文件夹。Chrome 从这个文件夹加载插件，所以不要删掉它
 2. 打开 `chrome://extensions`（Edge 用 `edge://extensions`），打开右上角 **开发者模式**
 3. 点 **加载已解压的扩展程序**，选择里面有 `manifest.json` 的那个文件夹
 4. 点浏览器右上角的拼图图标，把 ApplyTrail **固定** 到工具栏。安装后会自动打开追踪表
 
 安装前已经打开的网页，需要刷新一次后自动记录才会生效（手动点图标记录不受影响）。
+
+**更新**：重新下载 zip，覆盖同一个文件夹里的文件，然后在 `chrome://extensions` 里点 ApplyTrail 的 ↻，记录都会保留。不要点 **移除**：那会删掉浏览器里保存的记录（开了 Google 同步的除外）。
+
+每份拷贝的插件 ID 都一样（由 `manifest.json` 里的 `"key"` 固定），所以这样安装的每个人都能用 Google 登录同步。
 
 ## 三种记录方式
 
