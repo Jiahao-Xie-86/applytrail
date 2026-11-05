@@ -1,12 +1,13 @@
 const A = JT.analyze;
 const S = JT.store;
+const t = JT.i18n.t;
 const $ = (id) => document.getElementById(id);
 const esc = (s) =>
   String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const opts = (items, sel) =>
   items.map((x) => `<option value="${esc(x.id)}"${x.id === sel ? ' selected' : ''}>${esc(x.label)}</option>`).join('');
 const pad = (n) => String(n).padStart(2, '0');
-const WEEKDAYS = '日一二三四五六';
+const weekday = (d) => [t('周日'), t('周一'), t('周二'), t('周三'), t('周四'), t('周五'), t('周六')][d.getDay()];
 const ACTIVE = ['applied', 'oa', 'interviewing'];
 
 const state = { apps: [], status: '', type: '', source: '', sponsor: '', q: '', sort: 'applied', openId: null, tab: 'info', jdEdit: false };
@@ -23,7 +24,7 @@ const md = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
 function fmtWhen(local) {
   const d = new Date(local);
   if (isNaN(d)) return local || '';
-  return `${md(d)} 周${WEEKDAYS[d.getDay()]} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${md(d)} ${weekday(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 function fmtAt(iso) {
   const d = new Date(iso);
@@ -36,7 +37,7 @@ function weekStart(d) {
   return x;
 }
 function lastActivity(a) {
-  const tl = (a.timeline || []).map((t) => (t.at || '').slice(0, 10));
+  const tl = (a.timeline || []).map((e) => (e.at || '').slice(0, 10));
   return [a.appliedDate || '', ...tl].sort().pop();
 }
 function upcomingRound(a) {
@@ -47,7 +48,7 @@ function upcomingRound(a) {
 }
 const reachedProgress = (a) =>
   JT.PROGRESS_STATUSES.includes(a.status) ||
-  (a.timeline || []).some((t) => JT.PROGRESS_STATUSES.includes(t.status)) ||
+  (a.timeline || []).some((e) => JT.PROGRESS_STATUSES.includes(e.status)) ||
   (a.interviews || []).length > 0;
 
 // ---------- overview ----------
@@ -58,12 +59,12 @@ function renderTiles() {
   const count = (st) => state.apps.filter((a) => st.includes(a.status)).length;
   const rate = applied.length ? Math.round((applied.filter(reachedProgress).length / applied.length) * 100) + '%' : '—';
   const tiles = [
-    [applied.length, '已投递'],
-    [applied.filter((a) => (a.appliedDate || '') >= weekAgo).length, '近 7 天投递'],
-    [count(['applied']), '等待回复'],
-    [count(['oa', 'interviewing']), 'OA / 面试中'],
+    [applied.length, t('已投递')],
+    [applied.filter((a) => (a.appliedDate || '') >= weekAgo).length, t('近 7 天投递')],
+    [count(['applied']), t('等待回复')],
+    [count(['oa', 'interviewing']), t('OA / 面试中')],
     [count(['offer']), 'Offer'],
-    [rate, '进入 OA / 面试比例'],
+    [rate, t('进入 OA / 面试比例')],
   ];
   $('tiles').innerHTML = tiles.map(([v, l]) => `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
 }
@@ -111,7 +112,7 @@ function renderChart() {
     }
     const isLast = i === weeks.length - 1;
     if (i % 2 === 1 || isLast) {
-      out += `<text x="${x + bw / 2}" y="${H - 4}" text-anchor="middle">${isLast ? '本周' : md(w.start)}</text>`;
+      out += `<text x="${x + bw / 2}" y="${H - 4}" text-anchor="middle">${isLast ? t('本周') : md(w.start)}</text>`;
     }
     if ((isLast || w.n === max) && w.n > 0) {
       out += `<text class="val" x="${x + bw / 2}" y="${y(w.n) - 5}" text-anchor="middle">${w.n}</text>`;
@@ -128,7 +129,7 @@ function renderChart() {
       const w = weeks[i];
       const end = new Date(w.start);
       end.setDate(end.getDate() + 6);
-      tip.textContent = `${md(w.start)} – ${md(end)}：投递 ${w.n} 份`;
+      tip.textContent = t('{from} – {to}：投递 {n} 份', { from: md(w.start), to: md(end), n: w.n });
       tip.style.left = `${m.l + i * slot + slot / 2}px`;
       tip.style.top = `${Math.min(y(w.n), y(0)) - 8}px`;
       tip.classList.remove('hidden');
@@ -149,7 +150,7 @@ function renderUpcoming() {
         .slice(0, 10)
         .map(({ a, r }) => `<li data-id="${a.id}"><span class="when">${fmtWhen(r.date)}</span><span class="what">${esc(a.company)} · ${esc(r.type)}</span></li>`)
         .join('')
-    : '<li class="empty-up">暂无。打开一条记录 → 面试记录 → 添加一轮，就会出现在这里。</li>';
+    : `<li class="empty-up">${t('暂无。打开一条记录 → 面试记录 → 添加一轮，就会出现在这里。')}</li>`;
 }
 
 async function renderBackupWarn() {
@@ -162,8 +163,9 @@ async function renderBackupWarn() {
   const box = $('backupWarn');
   box.classList.toggle('hidden', !show);
   if (show) {
-    box.innerHTML = `<span>${days === null ? '还没有备份过' : `上次备份是 ${days} 天前`}。数据只存在这个浏览器里，卸载插件或清除浏览器数据会丢失。</span>
-      <button id="backupNow">立即备份</button>`;
+    const when = days === null ? t('还没有备份过') : t('上次备份是 {n} 天前', { n: days });
+    box.innerHTML = `<span>${when}${t('。数据只存在这个浏览器里，卸载插件或清除浏览器数据会丢失。')}</span>
+      <button id="backupNow">${t('立即备份')}</button>`;
     $('backupNow').onclick = exportJson;
   }
 }
@@ -174,20 +176,20 @@ function renderStatusTabs() {
   const counts = {};
   for (const a of state.apps) counts[a.status] = (counts[a.status] || 0) + 1;
   const tabs = [
-    { id: '', label: '全部', n: state.apps.length },
-    { id: 'active', label: '进行中', n: state.apps.filter((a) => ACTIVE.includes(a.status)).length },
+    { id: '', label: t('全部'), n: state.apps.length },
+    { id: 'active', label: t('进行中'), n: state.apps.filter((a) => ACTIVE.includes(a.status)).length },
     ...JT.STATUSES.map((s) => ({ id: s.id, label: s.label, n: counts[s.id] || 0 })),
-  ].filter((t) => t.n > 0 || t.id === '' || t.id === state.status);
+  ].filter((x) => x.n > 0 || x.id === '' || x.id === state.status);
   $('statusTabs').innerHTML = tabs
-    .map((t) => `<button data-status="${t.id}" class="${t.id === state.status ? 'active' : ''}">${t.label}<span class="n">${t.n}</span></button>`)
+    .map((x) => `<button data-status="${x.id}" class="${x.id === state.status ? 'active' : ''}">${x.label}<span class="n">${x.n}</span></button>`)
     .join('');
 }
 
 function renderFilters() {
   const sources = [...new Set(state.apps.map((a) => a.source).filter(Boolean))].sort();
-  $('fType').innerHTML = `<option value="">全部类型</option>${opts(JT.JOB_TYPES, state.type)}`;
-  $('fSource').innerHTML = `<option value="">全部来源</option>${opts(sources.map((s) => ({ id: s, label: s })), state.source)}`;
-  $('fSponsor').innerHTML = `<option value="">签证：全部</option>${opts(JT.SPONSORSHIP, state.sponsor)}`;
+  $('fType').innerHTML = `<option value="">${t('全部类型')}</option>${opts(JT.JOB_TYPES, state.type)}`;
+  $('fSource').innerHTML = `<option value="">${t('全部来源')}</option>${opts(sources.map((s) => ({ id: s, label: t(s) })), state.source)}`;
+  $('fSponsor').innerHTML = `<option value="">${t('签证：全部')}</option>${opts(JT.SPONSORSHIP, state.sponsor)}`;
 }
 
 function filtered() {
@@ -216,9 +218,9 @@ function nextStep(a) {
   if (up) return `${fmtWhen(up.date)} · ${esc(up.type)}`;
   if (a.status === 'applied') {
     const d = daysSince(lastActivity(a));
-    if (d >= 21) return `<span class="stale">${d} 天无回音</span>`;
+    if (d >= 21) return `<span class="stale">${t('{n} 天无回音', { n: d })}</span>`;
   }
-  if (a.status === 'wishlist' && a.deadline) return `截止 ${esc(a.deadline)}`;
+  if (a.status === 'wishlist' && a.deadline) return esc(t('截止 {date}', { date: a.deadline }));
   return '';
 }
 
@@ -228,12 +230,12 @@ function rowHtml(a) {
     .filter(Boolean)
     .join(' · ');
   return `<tr data-id="${a.id}" class="${a.id === state.openId ? 'selected' : ''}">
-    <td class="c-star"><button class="star ${a.starred ? 'on' : ''}" data-act="star" title="标星">${a.starred ? '★' : '☆'}</button></td>
+    <td class="c-star"><button class="star ${a.starred ? 'on' : ''}" data-act="star" title="${t('标星')}">${a.starred ? '★' : '☆'}</button></td>
     <td class="company" title="${esc(a.company)}">${esc(a.company) || '—'}</td>
     <td class="title"><span class="t" title="${esc(a.title)}">${esc(a.title) || '—'}</span>${sub ? `<span class="sub">${esc(sub)}</span>` : ''}</td>
     <td class="nowrap">${esc(JT.label(JT.JOB_TYPES, a.jobType))}</td>
     <td class="loc" title="${esc(a.location)}">${esc(a.location)}</td>
-    <td class="nowrap">${esc(a.source)}</td>
+    <td class="nowrap">${esc(t(a.source || ''))}</td>
     <td class="nowrap">${esc(a.appliedDate)}</td>
     <td class="nowrap"><span class="pill"><span class="dot" style="--c:${st.color}"></span><select class="status-select" data-act="status">${opts(JT.STATUSES, a.status)}</select></span></td>
     <td class="next">${nextStep(a)}</td>
@@ -242,7 +244,7 @@ function rowHtml(a) {
 
 function renderRows() {
   const list = filtered();
-  $('count').textContent = `${list.length} 条`;
+  $('count').textContent = t('{n} 条', { n: list.length });
   $('empty').classList.toggle('hidden', list.length > 0 || state.apps.length === 0);
   $('rows').innerHTML = list.map(rowHtml).join('');
 }
@@ -251,10 +253,10 @@ function renderRows() {
 
 function ago(ts) {
   const m = Math.round((Date.now() - ts) / 60000);
-  if (m < 1) return '刚刚';
-  if (m < 60) return `${m} 分钟前`;
-  if (m < 48 * 60) return `${Math.round(m / 60)} 小时前`;
-  return `${Math.round(m / 1440)} 天前`;
+  if (m < 1) return t('刚刚');
+  if (m < 60) return t('{n} 分钟前', { n: m });
+  if (m < 48 * 60) return t('{n} 小时前', { n: Math.round(m / 60) });
+  return t('{n} 天前', { n: Math.round(m / 1440) });
 }
 
 function gmailLink(e) {
@@ -266,34 +268,34 @@ function evHtml(e, appOptions) {
   const T = JT.email.TYPES[e.type];
   const color = (JT.STATUS_MAP[T.target] || {}).color;
   const st = (id) => esc(JT.label(JT.STATUSES, id));
-  const view = `<button data-ev="view">查看</button>`;
-  const undo = `<button data-ev="undo">撤销</button>`;
+  const view = `<button data-ev="view">${t('查看')}</button>`;
+  const undo = `<button data-ev="undo">${t('撤销')}</button>`;
   let main;
   let actions = '';
   if (e.state === 'applied' && e.created) {
-    main = `<b>${esc(e.company || '（未知公司）')}</b> 已从邮件创建记录（${st(e.newStatus)}）`;
+    main = `<b>${esc(e.company || t('（未知公司）'))}</b> ${t('已从邮件创建记录（{status}）', { status: st(e.newStatus) })}`;
     actions = view + undo;
   } else if (e.state === 'applied') {
     main = `<b>${esc(e.company)}</b> ${st(e.prevStatus)} → ${st(e.newStatus)}`;
     actions = view + undo;
   } else if (e.state === 'noop') {
-    main = `<b>${esc(e.company)}</b> 已记到时间线（状态不变）`;
+    main = `<b>${esc(e.company)}</b> ${t('已记到时间线（状态不变）')}`;
     actions = view + undo;
   } else if (e.state === 'undone') {
-    main = `${esc(e.company || e.guessCompany)} · 已撤销`;
+    main = t('{who} · 已撤销', { who: esc(e.company || e.guessCompany) });
   } else {
     const guess = [e.guessCompany, e.guessTitle].filter(Boolean).map(esc).join(' · ');
     main =
       e.state === 'ambiguous'
-        ? '匹配到多个投递，请选择是哪一个'
+        ? t('匹配到多个投递，请选择是哪一个')
         : e.type === 'received'
-          ? `可能是还没记录的投递${guess ? '：' + guess : ''}`
-          : `没找到对应的投递${guess ? '（' + guess + '）' : ''}`;
+          ? guess ? t('可能是还没记录的投递：{guess}', { guess }) : t('可能是还没记录的投递')
+          : guess ? t('没找到对应的投递（{guess}）', { guess }) : t('没找到对应的投递');
     const cands = (e.candidates || []).map((id) => state.apps.find((a) => a.id === id)).filter(Boolean);
     const candOpts = cands.map((a) => `<option value="${a.id}">${esc(a.company)} - ${esc(a.title)}</option>`).join('');
-    actions = `${e.state === 'unmatched' ? '<button data-ev="create">创建记录</button>' : ''}
-      <select data-ev="link"><option value="">关联到…</option>${candOpts ? `<optgroup label="可能是">${candOpts}</optgroup><optgroup label="全部">` : ''}${appOptions}${candOpts ? '</optgroup>' : ''}</select>
-      <button data-ev="ignore" class="ghost">忽略</button>`;
+    actions = `${e.state === 'unmatched' ? `<button data-ev="create">${t('创建记录')}</button>` : ''}
+      <select data-ev="link"><option value="">${t('关联到…')}</option>${candOpts ? `<optgroup label="${t('可能是')}">${candOpts}</optgroup><optgroup label="${t('全部')}">` : ''}${appOptions}${candOpts ? '</optgroup>' : ''}</select>
+      <button data-ev="ignore" class="ghost">${t('忽略')}</button>`;
   }
   const when = md(new Date(e.date || e.at));
   return `<li class="ev ${e.state}" data-id="${e.id}" data-app="${e.appId || ''}">
@@ -310,10 +312,10 @@ async function renderEmails() {
   const enabled = !d.settings || d.settings.emailDetect !== false;
   const scan = d.gmailScan;
   $('gmailStatus').textContent = !enabled
-    ? '已关闭（可在设置中开启）'
+    ? t('已关闭（可在设置中开启）')
     : scan
-      ? `Gmail 上次扫描 ${ago(scan.at)} · 当前列表 ${scan.rows} 封`
-      : '还没扫描过 · 打开 Gmail 网页版后会自动识别';
+      ? t('Gmail 上次扫描 {ago} · 当前列表 {n} 封', { ago: ago(scan.at), n: scan.rows })
+      : t('还没扫描过 · 打开 Gmail 网页版后会自动识别');
   const when = (e) => e.date || Date.parse(e.at);
   const events = (d.emailEvents || [])
     .filter((e) => e.state !== 'ignored')
@@ -325,7 +327,7 @@ async function renderEmails() {
     .join('');
   $('emailList').innerHTML = events.length
     ? events.map((e) => evHtml(e, appOptions)).join('')
-    : '<li class="ev-empty">识别到的 OA 邀请、面试邀请、拒信和 Offer 会显示在这里。</li>';
+    : `<li class="ev-empty">${t('识别到的 OA 邀请、面试邀请、拒信和 Offer 会显示在这里。')}</li>`;
 }
 
 $('emailList').addEventListener('click', async (e) => {
@@ -369,7 +371,7 @@ async function load() {
 
 let saveTimer = null;
 function scheduleSave() {
-  $('saveState').textContent = '保存中…';
+  $('saveState').textContent = t('保存中…');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flushSave, 400);
 }
@@ -378,7 +380,7 @@ async function flushSave() {
   clearTimeout(saveTimer);
   saveTimer = null;
   await S.save(current);
-  $('saveState').textContent = '已自动保存';
+  $('saveState').textContent = t('已自动保存');
 }
 
 async function openDrawer(id, tab) {
@@ -411,13 +413,13 @@ async function closeDrawer() {
 
 function renderDrawerHead() {
   const a = current;
-  $('dCompany').textContent = a.company || '（未填写公司）';
-  $('dTitle').textContent = a.title || '（未填写职位）';
+  $('dCompany').textContent = a.company || t('（未填写公司）');
+  $('dTitle').textContent = a.title || t('（未填写职位）');
   const meta = [
-    a.source && esc(a.source),
-    a.appliedDate && '投递于 ' + esc(a.appliedDate),
+    a.source && esc(t(a.source)),
+    a.appliedDate && esc(t('投递于 {date}', { date: a.appliedDate })),
     a.location && esc(a.location),
-    /^https?:/.test(a.url) && `<a href="${esc(a.url)}" target="_blank" rel="noopener">原职位链接 ↗</a>`,
+    /^https?:/.test(a.url) && `<a href="${esc(a.url)}" target="_blank" rel="noopener">${t('原职位链接 ↗')}</a>`,
   ].filter(Boolean);
   $('dMeta').innerHTML = meta.join('<span>·</span>');
   $('dStatus').innerHTML = opts(JT.STATUSES, a.status);
@@ -434,44 +436,46 @@ function renderDrawer() {
 }
 
 function infoTab(a) {
+  // Built-in source values ("公司官网", "邮件") are stored in Chinese and shown translated.
+  const val = (name) => (name === 'source' ? t(a.source || '') : a[name]);
   const f = (name, label, cls = '', type = 'text') =>
-    `<label class="${cls}">${label}<input type="${type}" data-f="${name}" value="${esc(a[name])}"></label>`;
+    `<label class="${cls}">${label}<input type="${type}" data-f="${name}" value="${esc(val(name))}"></label>`;
   const sel = (name, label, items) => `<label>${label}<select data-f="${name}">${opts(items, a[name])}</select></label>`;
   return `<div class="fgrid">
-    ${f('company', '公司')}${f('title', '职位', 'span2')}
-    ${f('location', '地点')}${sel('jobType', '类型', JT.JOB_TYPES)}${f('term', '学期 / 届')}
-    ${sel('workMode', '工作方式', JT.WORK_MODES)}${f('salary', '薪资')}${sel('sponsorship', '签证 Sponsor', JT.SPONSORSHIP)}
-    ${f('appliedDate', '投递日期', '', 'date')}${f('postedDate', '发布日期', '', 'date')}${f('deadline', '截止日期', '', 'date')}
-    ${f('source', '来源')}${f('jobId', 'Job ID / Req ID')}${f('resumeVersion', '简历版本')}
-    ${f('url', '职位链接', 'span3', 'url')}
-    ${f('referral', '内推人', 'span3')}
-    <label class="span3">联系人（Recruiter / Hiring Manager / 校友：名字、邮箱、LinkedIn）<textarea data-f="contacts" rows="3">${esc(a.contacts)}</textarea></label>
-    <label class="span3">备注<textarea data-f="notes" rows="4">${esc(a.notes)}</textarea></label>
+    ${f('company', t('公司'))}${f('title', t('职位'), 'span2')}
+    ${f('location', t('地点'))}${sel('jobType', t('类型'), JT.JOB_TYPES)}${f('term', t('学期 / 届'))}
+    ${sel('workMode', t('工作方式'), JT.WORK_MODES)}${f('salary', t('薪资'))}${sel('sponsorship', t('签证 Sponsor'), JT.SPONSORSHIP)}
+    ${f('appliedDate', t('投递日期'), '', 'date')}${f('postedDate', t('发布日期'), '', 'date')}${f('deadline', t('截止日期'), '', 'date')}
+    ${f('source', t('来源'))}${f('jobId', 'Job ID / Req ID')}${f('resumeVersion', t('简历版本'))}
+    ${f('url', t('职位链接'), 'span3', 'url')}
+    ${f('referral', t('内推人'), 'span3')}
+    <label class="span3">${t('联系人（Recruiter / Hiring Manager / 校友：名字、邮箱、LinkedIn）')}<textarea data-f="contacts" rows="3">${esc(a.contacts)}</textarea></label>
+    <label class="span3">${t('备注')}<textarea data-f="notes" rows="4">${esc(a.notes)}</textarea></label>
   </div>
-  ${a.sponsorshipNote ? `<div class="note section">JD 中与签证相关的原文：“${esc(a.sponsorshipNote)}”</div>` : ''}`;
+  ${a.sponsorshipNote ? `<div class="note section">${esc(t('JD 中与签证相关的原文：“{note}”', { note: a.sponsorshipNote }))}</div>` : ''}`;
 }
 
 function interviewsTab(a) {
   const rounds = a.interviews || [];
   const roundHtml = (r, i) => `<div class="round" data-i="${i}">
     <div class="fgrid">
-      <label>轮次<select data-r="type">${JT.ROUND_TYPES.map((t) => `<option${t === r.type ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>
-      <label>时间<input type="datetime-local" data-r="date" value="${esc(r.date)}"></label>
-      <label>结果<select data-r="result">${opts(JT.ROUND_RESULTS, r.result)}</select></label>
-      <label>面试官<input data-r="interviewer" value="${esc(r.interviewer)}"></label>
-      <label class="span2">地点 / 会议链接<input data-r="where" value="${esc(r.where)}"></label>
-      <label class="span3">记录（问了什么、答得怎样、复盘）<textarea data-r="notes" rows="4">${esc(r.notes)}</textarea></label>
+      <label>${t('轮次')}<select data-r="type">${JT.ROUND_TYPES.map((rt) => `<option${rt === r.type ? ' selected' : ''}>${esc(rt)}</option>`).join('')}</select></label>
+      <label>${t('时间')}<input type="datetime-local" data-r="date" value="${esc(r.date)}"></label>
+      <label>${t('结果')}<select data-r="result">${opts(JT.ROUND_RESULTS, r.result)}</select></label>
+      <label>${t('面试官')}<input data-r="interviewer" value="${esc(r.interviewer)}"></label>
+      <label class="span2">${t('地点 / 会议链接')}<input data-r="where" value="${esc(r.where)}"></label>
+      <label class="span3">${t('记录（问了什么、答得怎样、复盘）')}<textarea data-r="notes" rows="4">${esc(r.notes)}</textarea></label>
     </div>
     <div class="round-actions">
-      <button data-act="ics" data-i="${i}">添加到日历 (.ics)</button>
-      <button class="danger" data-act="delRound" data-i="${i}">删除这一轮</button>
+      <button data-act="ics" data-i="${i}">${t('添加到日历 (.ics)')}</button>
+      <button class="danger" data-act="delRound" data-i="${i}">${t('删除这一轮')}</button>
     </div>
   </div>`;
-  return `<button class="primary" data-act="addRound">+ 添加一轮面试 / OA</button>
+  return `<button class="primary" data-act="addRound">${t('+ 添加一轮面试 / OA')}</button>
     <div class="section">${
       rounds.length
         ? rounds.map(roundHtml).join('')
-        : '<p class="muted">还没有面试记录。收到 OA 或面试邀请后在这里添加，状态会自动更新，并显示在首页“即将到来的面试”。</p>'
+        : `<p class="muted">${t('还没有面试记录。收到 OA 或面试邀请后在这里添加，状态会自动更新，并显示在首页“即将到来的面试”。')}</p>`
     }</div>`;
 }
 
@@ -481,35 +485,36 @@ function prepTab(a) {
   const slug = company.toLowerCase().trim().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const g = (q) => `https://www.google.com/search?q=${encodeURIComponent(q)}`;
   const links = [
-    ['Glassdoor 面试经验', `https://www.glassdoor.com/Search/results.htm?keyword=${c}`],
-    ['LeetCode 公司题', `https://leetcode.com/company/${slug}/`],
-    ['一亩三分地 面经', g(`site:1point3acres.com ${company} ${a.jobType === 'intern' ? 'intern ' : ''}面经`)],
-    ['Levels.fyi 薪资', `https://www.levels.fyi/companies/${slug}/salaries`],
-    ['H1B 记录', `https://h1bdata.info/index.php?em=${c}`],
+    [t('Glassdoor 面试经验'), `https://www.glassdoor.com/Search/results.htm?keyword=${c}`],
+    [t('LeetCode 公司题'), `https://leetcode.com/company/${slug}/`],
+    // The search term stays Chinese: that is what the posts on the site are titled.
+    [t('一亩三分地 面经'), g(`site:1point3acres.com ${company} ${a.jobType === 'intern' ? 'intern ' : ''}面经`)], // i18n-skip
+    [t('Levels.fyi 薪资'), `https://www.levels.fyi/companies/${slug}/salaries`],
+    [t('H1B 记录'), `https://h1bdata.info/index.php?em=${c}`],
     ['Blind', `https://www.teamblind.com/search/${c}`],
-    ['LinkedIn 找 Recruiter / 校友', `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(company + ' recruiter')}`],
-    ['搜索面试题', g(`${company} ${a.title} interview questions`)],
+    [t('LinkedIn 找 Recruiter / 校友'), `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(company + ' recruiter')}`],
+    [t('搜索面试题'), g(`${company} ${a.title} interview questions`)],
   ];
   const reqs = A.extractRequirements(a.description || '');
   const kws = A.extractKeywords(`${a.title}\n${a.description || ''}`);
   const sp = JT.label(JT.SPONSORSHIP, a.sponsorship);
   return `
-    <div class="section"><h3>岗位要求摘要</h3>${
-      reqs.length ? `<ul class="req">${reqs.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : '<p class="muted">JD 里没找到年限 / 学历 / 毕业时间相关的句子。</p>'
+    <div class="section"><h3>${t('岗位要求摘要')}</h3>${
+      reqs.length ? `<ul class="req">${reqs.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : `<p class="muted">${t('JD 里没找到年限 / 学历 / 毕业时间相关的句子。')}</p>`
     }</div>
-    <div class="section"><h3>JD 技能关键词</h3>${
-      kws.length ? `<div class="chips">${kws.map((k) => `<span class="chip">${esc(k)}</span>`).join('')}</div>` : '<p class="muted">暂无（先保存 JD）。</p>'
+    <div class="section"><h3>${t('JD 技能关键词')}</h3>${
+      kws.length ? `<div class="chips">${kws.map((k) => `<span class="chip">${esc(k)}</span>`).join('')}</div>` : `<p class="muted">${t('暂无（先保存 JD）。')}</p>`
     }</div>
-    <div class="section"><h3>签证</h3><span class="pill">${esc(sp)}</span>${
+    <div class="section"><h3>${t('签证')}</h3><span class="pill">${esc(sp)}</span>${
       a.sponsorshipNote ? `<div class="note" style="margin-top:6px">“${esc(a.sponsorshipNote)}”</div>` : ''
     }</div>
-    <div class="section"><h3>调研</h3><div class="links">${links
+    <div class="section"><h3>${t('调研')}</h3><div class="links">${links
       .map(([l, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)} ↗</a>`)
       .join('')}</div></div>
-    <div class="section"><h3>准备笔记</h3><textarea data-f="prepNotes" rows="10"
-      placeholder="例如：Why this company / 对应 JD 的项目经历（STAR）/ 要复习的知识点 / 想问面试官的问题">${esc(a.prepNotes)}</textarea></div>
-    <div class="section"><button data-act="copyPrompt">复制 AI 面试准备提示词</button>
-      <span class="muted">　粘贴给 Claude 等 AI，让它根据 JD 出题、帮你准备</span></div>`;
+    <div class="section"><h3>${t('准备笔记')}</h3><textarea data-f="prepNotes" rows="10"
+      placeholder="${esc(t('例如：Why this company / 对应 JD 的项目经历（STAR）/ 要复习的知识点 / 想问面试官的问题'))}">${esc(a.prepNotes)}</textarea></div>
+    <div class="section"><button data-act="copyPrompt">${t('复制 AI 面试准备提示词')}</button>
+      <span class="muted" style="margin-left:10px">${t('粘贴给 Claude 等 AI，让它根据 JD 出题、帮你准备')}</span></div>`;
 }
 
 function highlightJD(text) {
@@ -525,62 +530,87 @@ function highlightJD(text) {
 
 function jdTab(a) {
   if (state.jdEdit) {
-    return `<div class="jd-tools"><button class="primary" data-act="jdSave">保存 JD</button><button data-act="jdCancel">取消</button></div>
-      <textarea id="jdText" rows="28" placeholder="把职位描述粘贴到这里">${esc(a.description)}</textarea>`;
+    return `<div class="jd-tools"><button class="primary" data-act="jdSave">${t('保存 JD')}</button><button data-act="jdCancel">${t('取消')}</button></div>
+      <textarea id="jdText" rows="28" placeholder="${t('把职位描述粘贴到这里')}">${esc(a.description)}</textarea>`;
   }
   const d = a.description || '';
-  return `<div class="jd-tools"><button data-act="jdEdit">编辑 / 粘贴 JD</button>${d ? '<button data-act="jdCopy">复制全文</button>' : ''}
-      <span class="muted">${d.length.toLocaleString()} 字${d ? ' · 高亮为识别出的技能关键词' : ''}</span></div>
-    ${d ? `<div class="jd-view">${highlightJD(d)}</div>` : '<p class="muted">还没有 JD。职位下线后原链接就看不到了，建议投递时保存一份。</p>'}`;
+  return `<div class="jd-tools"><button data-act="jdEdit">${t('编辑 / 粘贴 JD')}</button>${d ? `<button data-act="jdCopy">${t('复制全文')}</button>` : ''}
+      <span class="muted">${t('{n} 字', { n: d.length.toLocaleString() })}${d ? ' · ' + t('高亮为识别出的技能关键词') : ''}</span></div>
+    ${d ? `<div class="jd-view">${highlightJD(d)}</div>` : `<p class="muted">${t('还没有 JD。职位下线后原链接就看不到了，建议投递时保存一份。')}</p>`}`;
 }
 
 function timelineTab(a) {
   const items = [
-    ...(a.timeline || []).map((t) => ({
-      at: t.at,
-      text: t.status ? `状态 → ${JT.label(JT.STATUSES, t.status)}${t.note ? ' · ' + t.note : ''}` : t.note,
+    ...(a.timeline || []).map((e) => ({
+      at: e.at,
+      text: e.status ? t('状态 → {status}', { status: JT.label(JT.STATUSES, e.status) }) + (e.note ? ' · ' + e.note : '') : e.note,
     })),
     ...(a.interviews || [])
       .filter((r) => r.date && !isNaN(new Date(r.date)))
       .map((r) => ({
         at: new Date(r.date).toISOString(),
-        text: `面试：${r.type}${r.result && r.result !== 'pending' ? `（${JT.label(JT.ROUND_RESULTS, r.result)}）` : ''}`,
+        text:
+          t('面试：{type}', { type: r.type }) +
+          (r.result && r.result !== 'pending' ? t('（{result}）', { result: JT.label(JT.ROUND_RESULTS, r.result) }) : ''),
       })),
   ].sort((x, y) => (x.at || '').localeCompare(y.at || ''));
   return `<ul class="tl">${items.map((i) => `<li><span class="at">${fmtAt(i.at)}</span><span>${esc(i.text)}</span></li>`).join('')}</ul>
-    <div class="tl-add"><input id="tlNote" placeholder="添加一条记录，例如：收到 recruiter 邮件 / 发了 thank-you note"><button data-act="tlAdd">添加</button></div>`;
+    <div class="tl-add"><input id="tlNote" placeholder="${t('添加一条记录，例如：收到 recruiter 邮件 / 发了 thank-you note')}"><button data-act="tlAdd">${t('添加')}</button></div>`;
 }
 
 function copyPrompt(a) {
   const rounds = (a.interviews || [])
-    .map((r) => `- ${r.date ? fmtWhen(r.date) : '时间待定'} ${r.type}${r.result !== 'pending' ? '（' + JT.label(JT.ROUND_RESULTS, r.result) + '）' : ''}${r.notes ? '：' + r.notes : ''}`)
+    .map((r) => {
+      const result = r.result !== 'pending' ? t('（{result}）', { result: JT.label(JT.ROUND_RESULTS, r.result) }) : '';
+      const notes = r.notes ? t('：{notes}', { notes: r.notes }) : '';
+      return `- ${r.date ? fmtWhen(r.date) : t('时间待定')} ${r.type}${result}${notes}`;
+    })
     .join('\n');
-  const text = `我正在准备 ${a.company} 的 ${a.title}（${JT.label(JT.JOB_TYPES, a.jobType)}${a.term ? '，' + a.term : ''}）面试。请根据下面的 JD 帮我：
+  const type = JT.label(JT.JOB_TYPES, a.jobType);
+  const none = t('暂无');
+  const text =
+    JT.i18n.lang === 'en'
+      ? `I'm preparing for an interview for ${a.title} at ${a.company} (${type}${a.term ? ', ' + a.term : ''}). Using the JD below, please:
+1. Summarize the 5 skills / abilities this role values most;
+2. Predict likely technical and behavioral questions (8 of each), with key points for answering;
+3. Using my prep notes, point out what I still need to strengthen;
+4. Suggest 5 good questions to ask the interviewer.
+
+[Interview progress]
+${rounds || none}
+
+[My prep notes]
+${a.prepNotes || none}
+
+[JD]
+${a.description || t('（未保存 JD）')}`
+      : // i18n-skip (the Chinese version of the prompt above)
+        `我正在准备 ${a.company} 的 ${a.title}（${type}${a.term ? '，' + a.term : ''}）面试。请根据下面的 JD 帮我：
 1. 总结这个岗位最看重的 5 项能力 / 技能；
 2. 预测可能的技术面试题和行为面试题（各 8 道），并给出答题要点；
 3. 结合我的准备笔记，指出我还需要补强的地方；
 4. 给我 5 个适合问面试官的问题。
 
 【面试进度】
-${rounds || '暂无'}
+${rounds || none}
 
 【我的准备笔记】
-${a.prepNotes || '暂无'}
+${a.prepNotes || none}
 
 【JD】
-${a.description || '（未保存 JD）'}`;
+${a.description || t('（未保存 JD）')}`;
   return navigator.clipboard.writeText(text);
 }
 
 function downloadIcs(a, r) {
-  if (!r.date) return alert('先填写面试时间');
+  if (!r.date) return alert(t('先填写面试时间'));
   const start = new Date(r.date);
   const end = new Date(start.getTime() + 3600e3);
   const utc = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const e = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/[,;]/g, (m) => '\\' + m);
   const lines = [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//JobTracker//CN', 'BEGIN:VEVENT',
-    `UID:${r.id}@job-tracker`, `DTSTAMP:${utc(new Date())}`, `DTSTART:${utc(start)}`, `DTEND:${utc(end)}`,
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ApplyTrail//EN', 'BEGIN:VEVENT',
+    `UID:${r.id}@applytrail`, `DTSTAMP:${utc(new Date())}`, `DTSTART:${utc(start)}`, `DTEND:${utc(end)}`,
     `SUMMARY:${e(`${r.type} - ${a.company}`)}`,
     `DESCRIPTION:${e([a.title, r.interviewer && 'Interviewer: ' + r.interviewer, r.where, a.url].filter(Boolean).join('\n'))}`,
     r.where ? `LOCATION:${e(r.where)}` : '',
@@ -625,7 +655,7 @@ $('dBody').addEventListener('click', async (e) => {
     const rounds = $('dBody').querySelectorAll('.round');
     rounds[rounds.length - 1].scrollIntoView({ block: 'nearest' });
   } else if (act === 'delRound') {
-    if (!confirm('删除这一轮面试记录？')) return;
+    if (!confirm(t('删除这一轮面试记录？'))) return;
     a.interviews.splice(+btn.dataset.i, 1);
     scheduleSave();
     renderDrawer();
@@ -633,8 +663,8 @@ $('dBody').addEventListener('click', async (e) => {
     downloadIcs(a, a.interviews[+btn.dataset.i]);
   } else if (act === 'copyPrompt') {
     await copyPrompt(a);
-    btn.textContent = '已复制 ✓';
-    setTimeout(() => (btn.textContent = '复制 AI 面试准备提示词'), 1500);
+    btn.textContent = t('已复制 ✓');
+    setTimeout(() => (btn.textContent = t('复制 AI 面试准备提示词')), 1500);
   } else if (act === 'jdEdit') {
     state.jdEdit = true;
     renderDrawer();
@@ -655,7 +685,7 @@ $('dBody').addEventListener('click', async (e) => {
     renderDrawer();
   } else if (act === 'jdCopy') {
     await navigator.clipboard.writeText(a.description || '');
-    btn.textContent = '已复制 ✓';
+    btn.textContent = t('已复制 ✓');
   } else if (act === 'tlAdd') {
     const note = $('tlNote').value.trim();
     if (!note) return;
@@ -691,7 +721,7 @@ $('dStar').onclick = () => {
 $('dClose').onclick = closeDrawer;
 $('scrim').onclick = closeDrawer;
 $('dDelete').onclick = async () => {
-  if (!confirm(`删除 “${current.company} - ${current.title}” 这条记录？此操作不能撤销。`)) return;
+  if (!confirm(t('删除 “{name}” 这条记录？此操作不能撤销。', { name: `${current.company} - ${current.title}` }))) return;
   clearTimeout(saveTimer);
   saveTimer = null;
   await S.remove(current.id);
@@ -769,13 +799,13 @@ function download(name, content, type) {
 }
 
 async function exportJson() {
-  download(`job-tracker-backup-${S.today()}.json`, S.toJSON(await S.all()), 'application/json');
+  download(`applytrail-backup-${S.today()}.json`, S.toJSON(await S.all()), 'application/json');
   await S.setSettings({ lastBackupAt: new Date().toISOString() });
   renderBackupWarn();
 }
 
 $('exportJson').onclick = exportJson;
-$('exportCsv').onclick = async () => download(`job-applications-${S.today()}.csv`, S.toCSV(await S.all()), 'text/csv;charset=utf-8');
+$('exportCsv').onclick = async () => download(`applytrail-applications-${S.today()}.csv`, S.toCSV(await S.all()), 'text/csv;charset=utf-8');
 $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async (e) => {
   const file = e.target.files[0];
@@ -783,10 +813,10 @@ $('importFile').onchange = async (e) => {
   if (!file) return;
   try {
     const r = await S.importJSON(await file.text());
-    alert(`导入完成：新增 ${r.added} 条，更新 ${r.updated} 条，跳过 ${r.skipped} 条`);
+    alert(t('导入完成：新增 {added} 条，更新 {updated} 条，跳过 {skipped} 条', r));
     load();
   } catch (err) {
-    alert('导入失败：' + err.message);
+    alert(t('导入失败：{error}', { error: err.message }));
   }
 };
 
@@ -804,8 +834,8 @@ async function openSettings(focusSync) {
   $('sAuto').checked = s.autoDetect;
   $('sEmail').checked = s.emailDetect;
   $('sDefault').innerHTML = opts(JT.STATUSES.filter((x) => ['applied', 'wishlist'].includes(x.id)), s.defaultStatus);
-  let usage = `共 ${state.apps.length} 条记录`;
-  if (S.area.getBytesInUse) usage += `，占用 ${Math.round((await S.area.getBytesInUse(null)) / 1024)} KB`;
+  let usage = t('共 {n} 条记录', { n: state.apps.length });
+  if (S.area.getBytesInUse) usage += t('，占用 {kb} KB', { kb: Math.round((await S.area.getBytesInUse(null)) / 1024) });
   $('sUsage').textContent = usage;
   await renderSync();
   $('settingsDlg').showModal();
@@ -818,12 +848,28 @@ $('sAuto').onchange = (e) => S.setSettings({ autoDetect: e.target.checked });
 $('sEmail').onchange = (e) => S.setSettings({ emailDetect: e.target.checked });
 $('sDefault').onchange = (e) => S.setSettings({ defaultStatus: e.target.value });
 
+// ---------- language ----------
+
+async function switchLang(pref) {
+  await flushSave();
+  await S.setSettings({ lang: pref });
+  location.reload(); // other open tracker tabs reload through storage.onChanged below
+}
+
+function setupLang() {
+  const other = JT.i18n.lang === 'zh' ? 'en' : 'zh';
+  $('langBtn').textContent = other === 'en' ? 'EN' : t('中文');
+  $('langBtn').onclick = () => switchLang(other);
+  $('sLang').value = JT.i18n.pref;
+  $('sLang').onchange = (e) => switchLang(e.target.value);
+}
+
 // ---------- cloud sync ----------
 
 const sendBg = (msg) =>
   globalThis.chrome && chrome.runtime && chrome.runtime.sendMessage
     ? chrome.runtime.sendMessage(msg)
-    : Promise.resolve({ ok: false, error: '只能在插件里使用' });
+    : Promise.resolve({ ok: false, error: t('只能在插件里使用') });
 
 function setSyncStatus(text, cls) {
   $('syStatus').textContent = text;
@@ -834,31 +880,31 @@ async function renderSync() {
   const d = await S.area.get(['syncConfig', 'syncState']);
   const cfg = d.syncConfig || {};
   const st = d.syncState || {};
-  let chipText = '☁ 登录同步';
+  let chipText = t('☁ 登录同步');
   let cls = '';
   let status = '';
   if (cfg.enabled) {
     if (st.syncing) {
-      chipText = '☁ 同步中…';
-      status = '正在同步…';
+      chipText = t('☁ 同步中…');
+      status = t('正在同步…');
     } else if (st.lastError) {
-      chipText = st.needsLogin ? '⚠ 需要重新登录' : '⚠ 同步失败';
+      chipText = st.needsLogin ? t('⚠ 需要重新登录') : t('⚠ 同步失败');
       cls = 'err';
-      status = `同步失败（${ago(st.lastErrorAt)}）：${st.lastError}`;
+      status = t('同步失败（{ago}）：{error}', { ago: ago(st.lastErrorAt), error: st.lastError });
     } else if (st.lastSyncAt) {
-      chipText = `☁ 已同步 · ${ago(st.lastSyncAt)}`;
+      chipText = t('☁ 已同步 · {ago}', { ago: ago(st.lastSyncAt) });
       cls = 'ok';
-      status = `✓ ${ago(st.lastSyncAt)}同步 · 云端共 ${st.apps || 0} 条`;
+      status = t('✓ {ago}同步 · 云端共 {n} 条', { ago: ago(st.lastSyncAt), n: st.apps || 0 });
     } else {
-      chipText = '☁ 等待同步';
+      chipText = t('☁ 等待同步');
     }
   }
   $('syncChip').textContent = chipText;
   $('syncChip').className = 'sync-chip ' + cls;
   $('syIntro').classList.toggle('hidden', !!cfg.enabled);
   $('syAccount').classList.toggle('hidden', !cfg.enabled);
-  $('syAccount').textContent = cfg.enabled ? `已登录：${cfg.email || 'Google 账号'}` : '';
-  $('sySignIn').textContent = cfg.enabled ? '重新登录' : '用 Google 登录';
+  $('syAccount').textContent = cfg.enabled ? t('已登录：{email}', { email: cfg.email || t('Google 账号') }) : '';
+  $('sySignIn').textContent = cfg.enabled ? t('重新登录') : t('用 Google 登录');
   $('sySignIn').classList.toggle('hidden', !!cfg.enabled && !st.needsLogin);
   $('syNow').classList.toggle('hidden', !cfg.enabled);
   $('syOff').classList.toggle('hidden', !cfg.enabled);
@@ -867,42 +913,48 @@ async function renderSync() {
 
 async function syncAction(btn, msg, okText) {
   btn.disabled = true;
-  setSyncStatus('正在同步…');
+  setSyncStatus(t('正在同步…'));
   const res = await sendBg(msg);
   btn.disabled = false;
   await renderSync();
-  if (!res || !res.ok) setSyncStatus('✗ ' + ((res && res.error) || '失败'), 'err');
+  if (!res || !res.ok) setSyncStatus('✗ ' + ((res && res.error) || t('失败')), 'err');
   else if (okText) setSyncStatus(okText(res), 'ok');
   return res;
 }
 
 const syncSummary = (r) =>
-  `云端共 ${r.apps} 条${r.received ? `，收到 ${r.received} 条更新` : ''}${r.removed ? `，删除 ${r.removed} 条` : ''}${r.pushed ? '，已上传这台电脑的修改' : ''}`;
+  t('云端共 {n} 条', { n: r.apps }) +
+  (r.received ? t('，收到 {n} 条更新', { n: r.received }) : '') +
+  (r.removed ? t('，删除 {n} 条', { n: r.removed }) : '') +
+  (r.pushed ? t('，已上传这台电脑的修改') : '');
 
 $('sySignIn').onclick = async () => {
-  if (!(globalThis.chrome && chrome.identity)) return setSyncStatus('只能在插件里使用', 'err');
+  if (!(globalThis.chrome && chrome.identity)) return setSyncStatus(t('只能在插件里使用'), 'err');
   const btn = $('sySignIn');
   btn.disabled = true;
-  setSyncStatus('请在弹出的 Google 窗口里选择账号并允许…');
+  setSyncStatus(t('请在弹出的 Google 窗口里选择账号并允许…'));
   let email;
   try {
     email = await JT.google.signIn(); // the popup must be opened from this click
   } catch (e) {
     btn.disabled = false;
-    return setSyncStatus(/did not approve|closed|cancel/i.test(e.message) ? '已取消登录' : '✗ ' + e.message, 'err');
+    return setSyncStatus(/did not approve|closed|cancel/i.test(e.message) ? t('已取消登录') : '✗ ' + e.message, 'err');
   }
-  await syncAction(btn, { type: 'JT_SYNC_ENABLE', email }, (r) => `✓ 已登录 ${email}。${syncSummary(r)}。`);
+  await syncAction(btn, { type: 'JT_SYNC_ENABLE', email }, (r) => t('✓ 已登录 {email}。{summary}。', { email, summary: syncSummary(r) }));
 };
-$('syNow').onclick = () => syncAction($('syNow'), { type: 'JT_SYNC_NOW' }, (r) => `✓ 同步完成 · ${syncSummary(r)}`);
+$('syNow').onclick = () => syncAction($('syNow'), { type: 'JT_SYNC_NOW' }, (r) => t('✓ 同步完成 · {summary}', { summary: syncSummary(r) }));
 $('syOff').onclick = async () => {
-  if (!confirm('退出这台电脑的 Google 登录？本地记录和云端数据都会保留，其他电脑不受影响。')) return;
-  await syncAction($('syOff'), { type: 'JT_SYNC_DISABLE' }, () => '已退出。本地和云端数据都还在。');
+  if (!confirm(t('退出这台电脑的 Google 登录？本地记录和云端数据都会保留，其他电脑不受影响。'))) return;
+  await syncAction($('syOff'), { type: 'JT_SYNC_DISABLE' }, () => t('已退出。本地和云端数据都还在。'));
 };
 
 $('sClear').onclick = async () => {
   const cfg = (await S.area.get('syncConfig')).syncConfig || {};
-  if (!confirm(cfg.enabled ? '确定清空全部记录？已开启云同步：云端和其他电脑上的记录也会被清空。' : '确定清空全部记录？建议先“备份 JSON”。')) return;
-  if (!confirm('再确认一次：清空后无法恢复。')) return;
+  const ask = cfg.enabled
+    ? t('确定清空全部记录？已开启云同步：云端和其他电脑上的记录也会被清空。')
+    : t('确定清空全部记录？建议先“备份 JSON”。');
+  if (!confirm(ask)) return;
+  if (!confirm(t('再确认一次：清空后无法恢复。'))) return;
   await S.removeMany(state.apps.map((a) => a.id));
   $('settingsDlg').close();
   await closeDrawer();
@@ -921,14 +973,19 @@ window.addEventListener('resize', () => {
 
 // Reflect records saved by the popup / auto-detection while this page is open.
 if (globalThis.chrome && chrome.storage && chrome.storage.onChanged) {
-  let t = null;
+  let timer = null;
   let full = false;
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
+    // Language changed in another tab: reload to redraw everything.
+    if (changes.settings && JT.i18n.resolve((changes.settings.newValue || {}).lang) !== JT.i18n.lang) {
+      flushSave().then(() => location.reload());
+      return;
+    }
     // Gmail heartbeat and sync status only need their status lines refreshed.
     full = full || Object.keys(changes).some((k) => !['gmailScan', 'syncState', 'syncConfig'].includes(k));
-    clearTimeout(t);
-    t = setTimeout(() => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
       if (full) load();
       else {
         renderEmails();
@@ -946,8 +1003,12 @@ function routeFromHash() {
 }
 window.addEventListener('hashchange', routeFromHash);
 
-load().then(routeFromHash);
-renderSync();
-// Pull the latest from the cloud whenever the tracker is opened.
-S.area.get('syncConfig').then((d) => d.syncConfig && d.syncConfig.enabled && sendBg({ type: 'JT_SYNC_NOW' }));
-setInterval(() => renderSync(), 60000); // keep "N 分钟前" fresh
+JT.i18n.init().then(() => {
+  JT.i18n.apply(document);
+  setupLang();
+  load().then(routeFromHash);
+  renderSync();
+  // Pull the latest from the cloud whenever the tracker is opened.
+  S.area.get('syncConfig').then((d) => d.syncConfig && d.syncConfig.enabled && sendBg({ type: 'JT_SYNC_NOW' }));
+  setInterval(() => renderSync(), 60000); // keep "5 min ago" fresh
+});

@@ -1,36 +1,45 @@
 // Service worker: records auto-detected applications, keeps per-tab "last job
 // viewed" cache, and shows a ✓ badge on pages that are already tracked.
-importScripts('lib/constants.js', 'lib/analyze.js', 'lib/store.js', 'lib/email.js', 'lib/google.js', 'lib/sync.js');
+importScripts('lib/constants.js', 'lib/i18n.js', 'lib/analyze.js', 'lib/store.js', 'lib/email.js', 'lib/google.js', 'lib/sync.js');
 
 const A = JT.analyze;
 const S = JT.store;
 const E = JT.email;
 const Y = JT.sync;
+const t = JT.i18n.t;
+const langReady = JT.i18n.init();
+// Sync errors are stored as text, so let the language load first.
+const syncSoon = () => langReady.then(() => Y.syncNow()).catch(() => {});
+
+// Follow the language chosen in the tracker's settings.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.settings) JT.i18n.setLang(((changes.settings.newValue || {}).lang) || 'auto');
+});
 const SEEN_TTL = 3 * 3600 * 1000;
 const DASHBOARD = chrome.runtime.getURL('dashboard/dashboard.html');
 
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') chrome.tabs.create({ url: DASHBOARD + '#welcome' });
   chrome.alarms.create('jt-sync', { periodInMinutes: 5 });
-  Y.syncNow().catch(() => {});
+  syncSoon();
 });
 
 // ---------- cloud sync: pull every 5 min / at startup, push shortly after local edits ----------
 
 chrome.runtime.onStartup.addListener(() => {
   chrome.alarms.create('jt-sync', { periodInMinutes: 5 });
-  Y.syncNow().catch(() => {});
+  syncSoon();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'jt-sync') Y.syncNow().catch(() => {});
+  if (alarm.name === 'jt-sync') syncSoon();
 });
 
 let pushTimer = null;
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !Object.keys(changes).some(Y.isDataKey)) return;
   clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => Y.syncNow().catch(() => {}), 8000);
+  pushTimer = setTimeout(syncSoon, 8000);
 });
 
 // ---------- per-tab job cache (storage.session survives worker restarts) ----------
@@ -61,8 +70,11 @@ async function resolveJob(current, tab) {
   return merged;
 }
 
+// The content script only renders; all toast text is built here in the UI language.
+// buttons: [{ act: 'open' | 'undo', label, primary }]
 function toast(tabId, payload) {
-  chrome.tabs.sendMessage(tabId, { type: 'JT_TOAST', ...payload }, { frameId: 0 }).catch(() => {});
+  const msg = { type: 'JT_TOAST', unknownTitle: t('未识别到职位名'), closeLabel: t('关闭'), ...payload };
+  chrome.tabs.sendMessage(tabId, msg, { frameId: 0 }).catch(() => {});
 }
 
 const handlers = {
@@ -75,6 +87,7 @@ const handlers = {
     if (!tab) return;
     const settings = await S.getSettings();
     if (!settings.autoDetect) return;
+    await langReady;
     const resolved = await resolveJob(job, tab);
     if (!resolved.title && !resolved.company) return;
 
@@ -82,13 +95,21 @@ const handlers = {
     if (existing && existing.status !== 'wishlist') {
       toast(tab.id, {
         mode: 'exists', appId: existing.id, title: existing.title, company: existing.company,
-        statusLabel: JT.label(JT.STATUSES, existing.status),
+        head: t('✓ 已在追踪中（{status}）', { status: JT.label(JT.STATUSES, existing.status) }),
+        buttons: [{ act: 'open', label: t('查看') }],
       });
       return;
     }
     const prevStatus = existing ? existing.status : null;
     const { app, created } = await S.upsertFromJob(resolved, 'applied');
-    toast(tab.id, { mode: 'saved', appId: app.id, created, prevStatus, title: app.title, company: app.company });
+    toast(tab.id, {
+      mode: 'saved', appId: app.id, created, prevStatus, title: app.title, company: app.company,
+      head: app.title ? t('✓ 已自动记录投递') : t('✓ 已记录投递，但信息不全'),
+      buttons: [
+        { act: 'open', label: app.title ? t('编辑') : t('补充信息'), primary: true },
+        { act: 'undo', label: t('撤销') },
+      ],
+    });
   },
 
   async JT_UNDO({ appId, created, prevStatus }) {
@@ -109,19 +130,23 @@ const handlers = {
   async JT_GMAIL_SCAN({ emails, rows, opened, account }, sender) {
     await chrome.storage.local.set({ gmailScan: { at: Date.now(), rows, opened } });
     if (!emails.length || !(await S.getSettings()).emailDetect) return;
+    await langReady;
     const events = await E.process(emails, account);
     const changed = events.filter((e) => e.state === 'applied');
     const pending = events.filter((e) => e.state === 'unmatched' || e.state === 'ambiguous');
     if (!sender.tab || (!changed.length && !pending.length)) return;
+    const st = (id) => JT.label(JT.STATUSES, id);
     const lines = [
-      ...changed.map((e) => `${e.company}：${JT.label(JT.STATUSES, e.prevStatus)} → ${JT.label(JT.STATUSES, e.newStatus)}`),
-      ...pending.map((e) => `待确认 · ${E.TYPES[e.type].label}：${e.guessCompany || e.subject}`),
+      ...changed.map((e) => t('{company}：{from} → {to}', { company: e.company, from: st(e.prevStatus), to: st(e.newStatus) })),
+      ...pending.map((e) => t('待确认 · {type}：{who}', { type: E.TYPES[e.type].label, who: e.guessCompany || e.subject })),
     ];
+    const undoIds = changed.map((e) => e.id);
     toast(sender.tab.id, {
       mode: 'email',
-      head: changed.length ? `📧 根据邮件更新了 ${changed.length} 个投递` : `📧 有 ${pending.length} 封求职邮件待确认`,
-      lines: lines.length > 5 ? [...lines.slice(0, 4), `…另外 ${lines.length - 4} 条`] : lines,
-      undoIds: changed.map((e) => e.id),
+      head: changed.length ? t('📧 根据邮件更新了 {n} 个投递', { n: changed.length }) : t('📧 有 {n} 封求职邮件待确认', { n: pending.length }),
+      lines: lines.length > 5 ? [...lines.slice(0, 4), t('…另外 {n} 条', { n: lines.length - 4 })] : lines,
+      buttons: [{ act: 'open', label: t('查看'), primary: true }, ...(undoIds.length ? [{ act: 'undo', label: t('撤销') }] : [])],
+      undoIds,
       hash: 'emails',
     });
   },
@@ -133,9 +158,10 @@ const handlers = {
   // The dashboard signs in (needs a click), then hands over the account for syncing.
   async JT_SYNC_ENABLE({ email }) {
     await Y.enable(email);
+    await langReady;
     return Y.syncNow();
   },
-  JT_SYNC_NOW: () => Y.syncNow(),
+  JT_SYNC_NOW: () => langReady.then(() => Y.syncNow()),
   JT_SYNC_DISABLE: () => Y.disable(),
 };
 

@@ -1,5 +1,6 @@
 const A = JT.analyze;
 const S = JT.store;
+const t = JT.i18n.t;
 const form = document.getElementById('form');
 const $ = (id) => document.getElementById(id);
 
@@ -26,7 +27,7 @@ function refreshDerived() {
   const sp = A.detectSponsorship(desc);
   const box = $('sponsorNote');
   if (sp.value === 'no' || sp.value === 'citizen') {
-    box.textContent = `⚠ ${JT.label(JT.SPONSORSHIP, sp.value)}：“${sp.note}”`;
+    box.textContent = t('⚠ {label}：“{note}”', { label: JT.label(JT.SPONSORSHIP, sp.value), note: sp.note });
     box.classList.remove('hidden');
   } else {
     box.classList.add('hidden');
@@ -56,10 +57,12 @@ function renderStats(apps) {
   const applied = apps.filter((a) => a.status !== 'wishlist');
   const week = applied.filter((a) => (a.appliedDate || '') >= weekAgo).length;
   const active = apps.filter((a) => JT.PROGRESS_STATUSES.includes(a.status)).length;
-  $('stats').textContent = `已投 ${applied.length} · 近 7 天 ${week} · 进行中 ${active}`;
+  $('stats').textContent = t('已投 {a} · 近 7 天 {w} · 进行中 {p}', { a: applied.length, w: week, p: active });
 }
 
 async function init() {
+  await JT.i18n.init();
+  JT.i18n.apply(document);
   fillSelect('status', JT.STATUSES);
   fillSelect('jobType', JT.JOB_TYPES);
   fillSelect('workMode', JT.WORK_MODES);
@@ -79,10 +82,10 @@ async function init() {
     if ((baseJob.description || '').length < 300) baseJob = A.enrich({ ...baseJob, description: A.cleanText(selection), keywords: undefined });
   }
   if (!res || !res.ok) {
-    $('warn').textContent = '无法自动读取这个页面，可以手动填写（或先刷新页面再试）。';
+    $('warn').textContent = t('无法自动读取这个页面，可以手动填写（或先刷新页面再试）。');
     $('warn').classList.remove('hidden');
   } else if (!baseJob.description) {
-    $('warn').textContent = '没抓到 JD：可以在网页上选中职位描述文字，再点开插件。';
+    $('warn').textContent = t('没抓到 JD：可以在网页上选中职位描述文字，再点开插件。');
     $('warn').classList.remove('hidden');
   }
 
@@ -92,11 +95,12 @@ async function init() {
     for (const k of ['description', 'location', 'salary', 'jobId', 'term']) if (!merged[k] && baseJob[k]) merged[k] = baseJob[k];
     setForm(merged);
     const st = JT.STATUS_MAP[existing.status] || {};
-    $('banner').innerHTML = `<span>已记录 · <span class="pill"><span class="dot" style="--c:${st.color}"></span>${st.label}</span>
-      ${existing.appliedDate ? ' · 投递于 ' + existing.appliedDate : ''}</span><button class="link" id="openThis">在追踪表中打开</button>`;
+    const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    $('banner').innerHTML = `<span>${t('已记录')} · <span class="pill"><span class="dot" style="--c:${st.color}"></span>${esc(st.label)}</span>
+      ${existing.appliedDate ? ' · ' + esc(t('投递于 {date}', { date: existing.appliedDate })) : ''}</span><button class="link" id="openThis">${t('在追踪表中打开')}</button>`;
     $('banner').classList.remove('hidden');
     $('openThis').onclick = () => openDashboard(existing.id);
-    $('saveBtn').textContent = '更新';
+    $('saveBtn').textContent = t('更新');
   } else {
     setForm({
       ...baseJob,
@@ -146,11 +150,11 @@ form.addEventListener('submit', async (e) => {
       await S.save(S.newApp({ ...baseJob, ...v }));
     }
     $('msg').className = '';
-    $('msg').textContent = '已保存 ✓';
+    $('msg').textContent = t('已保存 ✓');
     setTimeout(() => window.close(), 700);
   } catch (err) {
     $('msg').className = 'err';
-    $('msg').textContent = '保存失败：' + err.message;
+    $('msg').textContent = t('保存失败：{error}', { error: err.message });
   }
 });
 

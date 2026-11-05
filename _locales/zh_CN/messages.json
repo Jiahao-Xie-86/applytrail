@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "ApplyTrail – 求职投递追踪",
+    "description": "Extension name"
+  },
+  "extDesc": {
+    "message": "一键或自动记录投递的公司、职位和 JD，识别 Gmail 里的 OA、面试、拒信和 Offer 并更新状态，用 Google 账号多台电脑同步。",
+    "description": "Store summary, max 132 characters"
+  },
+  "actionTitle": {
+    "message": "记录这个职位 (Alt+Shift+J)",
+    "description": "Toolbar button tooltip"
+  }
+}

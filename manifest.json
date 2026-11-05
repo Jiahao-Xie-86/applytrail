@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Job Tracker 求职投递追踪",
-  "version": "1.0.0",
+  "name": "__MSG_extName__",
+  "version": "1.1.0",
+  "default_locale": "en",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4P/NhkhLLKKULgg4w5hc4EDNmvOwYzVGdv99Tt2axcCCo/Nl36HmvxTk6HJzKuSc8rANRg0Z2bQLWTT+GtYi/HYhwBDtXE/lMV5XugB8rm2wHX2EzEb/uIlfR6RpZGMa3hQgRxPTxLEmQaPRogFa/kzcHVcK9mEAyoX93s7VRMZeYOCJCfUF6s4kKBNeSqWYy479L7LRIdgoV3RyskXlCcpjtPqc9wpEOdulzTcYr/QN5e99uXrGl+qxknhMM1HtrqdLYr/5upM4dN7hGzWtUKv5awdqkaXeM2xe6F/QOWRGBNDgPW4qOF1rZQVx3VmeUS6/VTeOA1zgkniDszofsQIDAQAB",
-  "description": "一键/自动记录投递的公司、职位和 JD，识别 Gmail 里的 OA/面试/拒信，并通过 Google 账号在多台电脑间同步。",
+  "description": "__MSG_extDesc__",
   "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting", "alarms", "identity"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
@@ -11,7 +12,7 @@
   },
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "记录这个职位 (Alt+Shift+J)",
+    "default_title": "__MSG_actionTitle__",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

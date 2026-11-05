@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "ApplyTrail – Job Application Tracker",
+    "description": "Extension name"
+  },
+  "extDesc": {
+    "message": "Log job applications in one click or automatically, save the JD, prep for interviews, and update statuses from Gmail emails.",
+    "description": "Store summary, max 132 characters"
+  },
+  "actionTitle": {
+    "message": "Save this job (Alt+Shift+J)",
+    "description": "Toolbar button tooltip"
+  }
+}

@@ -140,19 +140,15 @@
     }
     const root = toastHost.shadowRoot;
     const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-    let job = `${esc(msg.title) || '<i>未识别到职位名</i>'}${msg.company ? ' · ' + esc(msg.company) : ''}`;
-    let head, buttons;
-    if (msg.mode === 'email') {
-      head = esc(msg.head);
-      job = msg.lines.map(esc).join('<br>');
-      buttons = `<button data-act="open" class="primary">查看</button>${msg.undoIds.length ? '<button data-act="undo">撤销</button>' : ''}`;
-    } else if (msg.mode === 'exists') {
-      head = `✓ 已在追踪中（${esc(msg.statusLabel)}）`;
-      buttons = `<button data-act="open">查看</button>`;
-    } else {
-      head = msg.title ? '✓ 已自动记录投递' : '✓ 已记录投递，但信息不全';
-      buttons = `<button data-act="open" class="primary">${msg.title ? '编辑' : '补充信息'}</button><button data-act="undo">撤销</button>`;
-    }
+    // All text arrives from the background, already in the UI language.
+    const job =
+      msg.mode === 'email'
+        ? (msg.lines || []).map(esc).join('<br>')
+        : `${esc(msg.title) || `<i>${esc(msg.unknownTitle)}</i>`}${msg.company ? ' · ' + esc(msg.company) : ''}`;
+    const head = esc(msg.head);
+    const buttons = (msg.buttons || [])
+      .map((b) => `<button data-act="${b.act === 'undo' ? 'undo' : 'open'}"${b.primary ? ' class="primary"' : ''}>${esc(b.label)}</button>`)
+      .join('');
     root.innerHTML = `
       <style>
         .t{font:13px/1.45 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;background:#111827;color:#f9fafb;
@@ -165,7 +161,7 @@
         button.primary{background:#2563eb;border-color:#2563eb}
         button[data-act]:hover{filter:brightness(1.15)}
       </style>
-      <div class="t"><div class="h"><span>${head}</span><button class="x" data-act="close" title="关闭">×</button></div>
+      <div class="t"><div class="h"><span>${head}</span><button class="x" data-act="close" title="${esc(msg.closeLabel)}">×</button></div>
       <div class="j">${job}</div><div class="b">${buttons}</div></div>`;
 
     root.querySelectorAll('button').forEach((btn) =>

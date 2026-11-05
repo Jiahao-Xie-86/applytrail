@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>求职投递追踪</title>
+  <title>ApplyTrail</title>
   <link rel="stylesheet" href="../ui/common.css">
   <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
   <header class="top">
-    <h1>求职投递追踪</h1>
+    <h1>ApplyTrail <span class="h-sub">求职投递追踪</span></h1>
     <div class="top-actions">
+      <button id="langBtn" class="lang-btn" title="切换语言"></button>
       <button id="syncChip" class="sync-chip" title="云同步设置">☁ 开启云同步</button>
       <button id="addBtn" class="primary">+ 手动添加</button>
       <button id="exportCsv" title="用 Excel / Google Sheets 打开">导出 CSV</button>
@@ -27,12 +28,12 @@
     <section id="welcome" class="card welcome hidden">
       <h2>开始使用</h2>
       <ol>
-        <li><b>自动记录</b>：在 Greenhouse / Lever / Workday / Ashby / LinkedIn Easy Apply / Indeed 等网站提交申请后，出现 “Thank you for applying” 页面时会自动记录，右下角弹出提示（可撤销）。</li>
-        <li><b>一键记录</b>：在任何职位页面点击浏览器右上角的插件图标（或按 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd>），自动抓取公司、职位、地点、JD，确认后保存。抓不到 JD 时，先在网页上选中 JD 文字再点图标。</li>
-        <li><b>邮件识别</b>：用 Gmail 网页版时，会自动识别 OA 邀请、面试邀请、拒信和 Offer，更新对应投递的状态（可撤销）。</li>
-        <li><b>面试准备</b>：在这里点开任意一条记录，可以记录每轮面试、查看 JD 关键词、签证要求、一键打开面经 / 薪资调研链接。</li>
+        <li data-i18n="welcome1"><b>自动记录</b>：在 Greenhouse / Lever / Workday / Ashby / LinkedIn Easy Apply / Indeed 等网站提交申请后，出现 “Thank you for applying” 页面时会自动记录，右下角弹出提示（可撤销）。</li>
+        <li data-i18n="welcome2"><b>一键记录</b>：在任何职位页面点击浏览器右上角的插件图标（或按 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd>），自动抓取公司、职位、地点、JD，确认后保存。抓不到 JD 时，先在网页上选中 JD 文字再点图标。</li>
+        <li data-i18n="welcome3"><b>邮件识别</b>：用 Gmail 网页版时，会自动识别 OA 邀请、面试邀请、拒信和 Offer，更新对应投递的状态（可撤销）。</li>
+        <li data-i18n="welcome4"><b>面试准备</b>：在这里点开任意一条记录，可以记录每轮面试、查看 JD 关键词、签证要求、一键打开面经 / 薪资调研链接。</li>
       </ol>
-      <p class="muted">点右上角 <b>☁ 登录同步</b> 用 Google 账号登录，换电脑时登录同一个账号，记录就都在。</p>
+      <p class="muted" data-i18n="welcomeSync">点右上角 <b>☁ 登录同步</b> 用 Google 账号登录，换电脑时登录同一个账号，记录就都在。</p>
     </section>
 
     <section class="overview">
@@ -128,9 +129,14 @@
       <label class="check"><input type="checkbox" id="sAuto"> 检测到 “投递成功” 页面时自动记录</label>
       <label class="check"><input type="checkbox" id="sEmail"> 识别 Gmail 里的求职邮件（OA / 面试 / 拒信 / Offer）并更新状态</label>
       <label>插件弹窗里的默认状态<select id="sDefault"></select></label>
+      <label>语言 / Language<select id="sLang">
+        <option value="auto">跟随浏览器</option>
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+      </select></label>
       <fieldset class="sync-box" id="syncBox">
         <legend>☁ 云同步</legend>
-        <p class="muted" id="syIntro">用 Google 账号登录后，所有登录同一账号的电脑会自动同步。数据存在你自己 Google Drive 的隐藏应用文件夹里，只有这个插件能读写，不占普通文件列表。</p>
+        <p class="muted" id="syIntro" data-i18n="syncIntro">用 Google 账号登录后，所有登录同一账号的电脑会自动同步。数据存在你自己 Google Drive 的隐藏应用文件夹里，只有这个插件能读写，不占普通文件列表。</p>
         <p id="syAccount" class="hidden"></p>
         <div class="sync-actions">
           <button type="button" id="sySignIn" class="primary google-btn">用 Google 登录</button>
@@ -140,7 +146,7 @@
         <p id="syStatus" class="muted"></p>
       </fieldset>
       <p class="muted" id="sUsage"></p>
-      <p class="muted">快捷键：<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd> 打开记录弹窗（可在 chrome://extensions/shortcuts 修改）。</p>
+      <p class="muted" data-i18n="shortcut">快捷键：<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd> 打开记录弹窗（可在 chrome://extensions/shortcuts 修改）。</p>
       <div class="settings-actions">
         <button type="button" id="sClear" class="danger">清空全部数据</button>
         <button value="close" class="primary">完成</button>
@@ -149,6 +155,7 @@
   </dialog>
 
   <script src="../lib/constants.js"></script>
+  <script src="../lib/i18n.js"></script>
   <script src="../lib/analyze.js"></script>
   <script src="../lib/store.js"></script>
   <script src="../lib/email.js"></script>

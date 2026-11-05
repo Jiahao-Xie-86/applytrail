@@ -2,14 +2,14 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <title>Job Tracker</title>
+  <title>ApplyTrail</title>
   <link rel="stylesheet" href="../ui/common.css">
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <header>
     <div>
-      <div class="brand">求职追踪</div>
+      <div class="brand">ApplyTrail</div>
       <div class="stats" id="stats"></div>
     </div>
     <button id="openDash" class="ghost">打开追踪表 ↗</button>
@@ -47,7 +47,7 @@
     <div id="keywords" class="chips"></div>
 
     <details id="jdBox">
-      <summary>JD 职位描述（<span id="jdLen">0</span> 字）</summary>
+      <summary data-i18n="jdSummary">JD 职位描述（<span id="jdLen">0</span> 字）</summary>
       <button type="button" id="useSel" class="link hidden">用页面上选中的文字作为 JD</button>
       <textarea name="description" rows="9" placeholder="没抓到的话：在网页上选中 JD 文字再打开插件，或直接粘贴到这里"></textarea>
     </details>
@@ -67,6 +67,7 @@
   <datalist id="resumeList"></datalist>
 
   <script src="../lib/constants.js"></script>
+  <script src="../lib/i18n.js"></script>
   <script src="../lib/analyze.js"></script>
   <script src="../lib/store.js"></script>
   <script src="popup.js"></script>
