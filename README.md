@@ -25,7 +25,7 @@ Every copy has the same extension ID (fixed by `"key"` in `manifest.json`), so G
 
 | | |
 |---|---|
-| **Automatic** | After you submit on Greenhouse, Lever, Workday, Ashby, LinkedIn Easy Apply, Indeed and similar sites, the "Thank you for applying / Your application has been submitted" page is detected and the application is saved as *Applied*. A notice appears in the corner, with **Undo** and **Edit**. |
+| **Automatic** | After you submit on Greenhouse, Lever, Workday, Ashby, LinkedIn Easy Apply, Indeed and similar sites, the "Thank you for applying / Your application has been submitted" page is detected (on Workday, the return to the job list after submitting) and the application is saved as *Applied*. A notice appears in the corner, with **Undo** and **Edit**. |
 | **One click** | On any job posting, click the toolbar icon (or press `Alt+Shift+J`). Company, title, location, salary, visa sponsorship and the JD are filled in; check and save. You can also save it as *Wishlist*. |
 | **Manual** | **+ Add manually** in the tracker. |
 
@@ -47,7 +47,9 @@ While Gmail is open on the web (mail.google.com), ApplyTrail reads the sender, s
 
 - A notice in Gmail lets you undo. **📧 Email activity** in the tracker lists every result with a link back to the email.
 - Emails are matched by sender domain, sender name (for emails sent through Greenhouse and other ATSs) and company names in the email. If one company has several applications, the job title in the email decides; if it is still unclear, you pick.
-- An application confirmation with no matching record shows up as "possibly an application you have not tracked", with one-click **Create record**. This is a quick way to backfill applications from before you installed (last 60 days).
+- If a confirmation arrives for a posting you viewed in the last 3 weeks that was never recorded (say the tab was open before you installed), the application is recorded from that posting, with title, JD and link (you can undo).
+- Emails are matched by who sent them and the subject first. A company mentioned only in the body ("join with Google Meet") is ignored when the sender is another company.
+- Any other application confirmation with no matching record shows up as "possibly an application you have not tracked", with one-click **Create record**. This is a quick way to backfill applications from before you installed (last 60 days).
 - Statuses never move backward, and emails older than the application date are ignored.
 - Some rejections only show the reason inside the email: open it and it is picked up.
 - Only recruiting emails are processed. Email bodies are not stored; only the subject, sender, type and the sentence that matched.

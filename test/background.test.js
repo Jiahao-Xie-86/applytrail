@@ -20,14 +20,21 @@ const local = area();
 const session = area();
 const toasts = [];
 let onMessage = null;
+let onInstalled = null;
+const injected = [];
+const openTabs = [];
 const noopEvt = { addListener() {} };
 const chrome = {
   storage: { local, session, onChanged: noopEvt },
-  runtime: { onInstalled: noopEvt, onStartup: noopEvt, onMessage: { addListener: (fn) => (onMessage = fn) }, getURL: (p) => 'chrome-extension://x/' + p },
+  runtime: {
+    onInstalled: { addListener: (fn) => (onInstalled = fn) }, onStartup: noopEvt, onMessage: { addListener: (fn) => (onMessage = fn) },
+    getURL: (p) => 'chrome-extension://x/' + p, getManifest: () => JSON.parse(fs.readFileSync(ROOT + 'manifest.json', 'utf8')),
+  },
+  scripting: { executeScript: async (opts) => { injected.push(opts); } },
   tabs: {
     onRemoved: noopEvt, onUpdated: noopEvt, onActivated: noopEvt,
     sendMessage: (tabId, msg) => { toasts.push({ tabId, ...msg }); return Promise.resolve(); },
-    create: async () => {}, query: async () => [], get: async () => null,
+    create: async () => {}, query: async (q) => (q && q.url ? openTabs : []), get: async () => null,
   },
   alarms: { create() {}, onAlarm: { addListener() {} } },
   action: { setBadgeText: async () => {}, setBadgeBackgroundColor: async () => {} },
@@ -85,6 +92,31 @@ const fullJob = {
   await send({ type: 'JT_UNDO', appId: wish.id, created: false, prevStatus: 'wishlist' }, { id: 9 });
   w = await S.get(wish.id);
   ok('undo reverts status', w.status === 'wishlist' && w.appliedDate === '' && w.timeline.length === 1);
+
+  // Workday returns to the job list after submit; a new tab with no cached posting falls back to
+  // the posting viewed recently on the same site.
+  const unity = { ...fullJob, url: 'https://unitytech.wd1.myworkdayjobs.com/en-US/Unity/job/San-Francisco/Software-Engineer-Intern_JOBREQ-1', company: 'Unity', title: 'Software Engineer Intern, Graphics', source: 'Workday' };
+  await send({ type: 'JT_JOB_SEEN', job: unity }, { id: 20 });
+  ok('recent posting stored', (local.data.recentJobs || []).some((j) => j.company === 'Unity' && j.host === 'unitytech.wd1.myworkdayjobs.com'));
+  await send({ type: 'JT_APPLY_DETECTED', job: { url: 'https://unitytech.wd1.myworkdayjobs.com/en-US/Unity?source=LinkedIn&Job_Application_ID=abc123', company: 'Unity' } }, { id: 21 });
+  const u = apps().find((a) => a.company === 'Unity');
+  ok('workday list page: recorded with the posting', u && u.title === 'Software Engineer Intern, Graphics' && u.description.length > 200 && /JOBREQ-1/.test(u.url), JSON.stringify(u && [u.title, u.url]));
+  // A posting from another company on the same site is not borrowed.
+  await send({ type: 'JT_APPLY_DETECTED', job: { url: 'https://unitytech.wd1.myworkdayjobs.com/en-US/Unity?Job_Application_ID=zzz', company: 'Initrode' } }, { id: 22 });
+  ok('recent posting of another company not used', apps().some((a) => a.company === 'Initrode' && !a.title));
+
+  // Install / update: inject the content scripts into tabs that are already open.
+  openTabs.push(
+    { id: 31, url: 'https://job-boards.greenhouse.io/acme/jobs/1' },
+    { id: 32, url: 'https://www.linkedin.com/jobs/view/123/' },
+    { id: 33, url: 'https://mail.google.com/mail/u/0/#inbox' },
+  );
+  onInstalled({ reason: 'update' });
+  await new Promise((r) => setTimeout(r, 50));
+  const by = (id) => injected.filter((x) => x.target.tabId === id);
+  ok('inject: ATS tab in all frames', by(31).length === 1 && by(31)[0].target.allFrames === true && by(31)[0].files.includes('content/content.js'), JSON.stringify(by(31)));
+  ok('inject: other site top frame', by(32).length === 1 && by(32)[0].target.allFrames === false);
+  ok('inject: gmail gets gmail.js too', by(33).some((x) => x.files.includes('content/gmail.js')));
 
   // Auto-detect off -> nothing recorded.
   await S.setSettings({ autoDetect: false });

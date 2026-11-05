@@ -302,14 +302,19 @@
       extract() {
         const dd = (id) => qa(`[data-automation-id="${id}"] dd`).map(txt).filter(Boolean).join(' | ');
         // JSON-LD hiringOrganization is the legal entity ("CN05 NVIDIA Shanghai WFOE"), so derive the
-        // name from the URL: nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite -> "NVIDIA".
-        const sub = location.hostname.split('.')[0];
+        // name from the URL: nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite -> "NVIDIA",
+        // unitytech.wd1.myworkdayjobs.com/en-US/Unity -> "Unity" (not the tenant id "Unitytech").
+        const sub = location.hostname.split('.')[0].toLowerCase();
         const siteSeg = /^[a-z]{2}-[A-Z]{2}$/.test(pathSeg(0)) ? pathSeg(1) : pathSeg(0);
         const fromSite = siteSeg
           .split(/_|-|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/)
           .filter((w) => w && !/^(external|career|careers|site|jobs?|experienced|university|campus|portal|global|en|us)$/i.test(w))
-          .join('');
-        const company = /^wd\d+$/.test(sub) ? A.titleCase(fromSite) : fromSite.toLowerCase() === sub ? fromSite : A.titleCase(sub);
+          .join(' ');
+        const flat = fromSite.toLowerCase().replace(/ /g, '');
+        // The site name is the company when the tenant id is generic (wd5) or spells the same name.
+        const related = flat.length > 1 && (/^wd\d+$/.test(sub) || sub.includes(flat) || flat.includes(sub));
+        const pretty = (s) => (s === s.toLowerCase() ? A.titleCase(s) : s);
+        const company = related ? pretty(fromSite) : /^wd\d+$/.test(sub) ? '' : A.titleCase(sub);
         return {
           title: first(['[data-automation-id="jobPostingHeader"]']),
           company,

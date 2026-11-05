@@ -302,7 +302,9 @@ function evHtml(e, appOptions) {
     <span class="ev-date">${when}</span>
     <span class="pill"><span class="dot" style="--c:${color}"></span>${esc(T.label)}</span>
     <div class="ev-main"><div>${main}</div>
-      <div class="ev-sub"><a href="${esc(gmailLink(e))}" target="_blank" rel="noopener" title="${esc(e.evidence || '')}">${esc(e.subject)}</a></div></div>
+      <div class="ev-sub"><a href="${esc(gmailLink(e))}" target="_blank" rel="noopener" title="${esc(e.evidence || '')}">${esc(e.subject)}</a>${
+        e.senderName || e.senderEmail ? `<span class="ev-from" title="${esc(e.senderEmail || '')}"> · ${esc(e.senderName || e.senderEmail)}</span>` : ''
+      }</div></div>
     <div class="ev-actions">${actions}</div>
   </li>`;
 }
@@ -983,7 +985,7 @@ if (globalThis.chrome && chrome.storage && chrome.storage.onChanged) {
       return;
     }
     // Gmail heartbeat and sync status only need their status lines refreshed.
-    full = full || Object.keys(changes).some((k) => !['gmailScan', 'syncState', 'syncConfig'].includes(k));
+    full = full || Object.keys(changes).some((k) => !['gmailScan', 'syncState', 'syncConfig', 'recentJobs'].includes(k));
     clearTimeout(timer);
     timer = setTimeout(() => {
       if (full) load();

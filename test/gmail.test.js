@@ -24,7 +24,7 @@ const INBOX = `<div role="main"><table><tbody>
   const dom = new JSDOM(`<!doctype html><html><body>${INBOX}</body></html>`, { url: 'https://mail.google.com/mail/u/1/#inbox', runScripts: 'outside-only' });
   const w = dom.window;
   const msgs = [];
-  w.chrome = { runtime: { sendMessage: (m) => { msgs.push(m); return Promise.resolve(); } }, storage: { local: { get: async () => ({}) } } };
+  w.chrome = { runtime: { id: 'test-ext', sendMessage: (m) => { msgs.push(m); return Promise.resolve(); } }, storage: { local: { get: async () => ({}) } } };
   w.eval(fs.readFileSync(ROOT + 'content/gmail.js', 'utf8'));
   await sleep(1500);
   const first = msgs.find((m) => m.type === 'JT_GMAIL_SCAN' && m.emails.length);
@@ -107,7 +107,7 @@ const INBOX = `<div role="main"><table><tbody>
   const pw = page.window;
   const sent = [];
   let listener = null;
-  pw.chrome = { runtime: { onMessage: { addListener: (fn) => (listener = fn) }, sendMessage: (m) => { sent.push(m); return Promise.resolve(); } }, storage: { local: { get: async () => ({}) } } };
+  pw.chrome = { runtime: { id: 'test-ext', onMessage: { addListener: (fn) => (listener = fn) }, sendMessage: (m) => { sent.push(m); return Promise.resolve(); } }, storage: { local: { get: async () => ({}) } } };
   pw.eval(['lib/analyze.js', 'content/extractors.js', 'content/content.js'].map((f) => fs.readFileSync(ROOT + f, 'utf8')).join('\n;\n'));
   listener(t, {}, () => {});
   const host = [...pw.document.documentElement.children].find((el) => el.shadowRoot);

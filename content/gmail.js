@@ -2,8 +2,16 @@
 // body of the opened email, keeps only job-related ones, and hands them to the
 // background worker for classification. Nothing leaves the browser.
 (function () {
-  if (window.__JT_GMAIL_LOADED__ || window !== window.top) return;
-  window.__JT_GMAIL_LOADED__ = true;
+  // A copy left from before the extension was reloaded is cut off from it; the fresh copy takes over.
+  const alive = () => {
+    try {
+      return !!chrome.runtime.id;
+    } catch {
+      return false;
+    }
+  };
+  if (window !== window.top || (window.__JT_GMAIL_ALIVE__ && window.__JT_GMAIL_ALIVE__())) return;
+  window.__JT_GMAIL_ALIVE__ = alive;
 
   const account = (location.pathname.match(/\/mail\/u\/\d+/) || ['/mail/u/0'])[0];
   // Cheap pre-filter so personal mail never reaches the classifier.
@@ -56,6 +64,7 @@
 
   let lastReport = 0;
   function scan() {
+    if (!alive()) return observer && observer.disconnect();
     const rows = document.querySelectorAll('tr.zA');
     const batch = [];
     const take = (em, key) => {
@@ -78,6 +87,7 @@
 
   let timer = null;
   let lastRun = 0;
+  let observer = null;
   function schedule() {
     clearTimeout(timer);
     const wait = Math.max(1200, 3000 - (Date.now() - lastRun));
@@ -91,7 +101,8 @@
     let settings = {};
     try { settings = (await chrome.storage.local.get('settings')).settings || {}; } catch {}
     if (settings.emailDetect === false) return;
-    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+    observer = new MutationObserver(schedule);
+    observer.observe(document.body, { childList: true, subtree: true });
     schedule();
   })();
 })();

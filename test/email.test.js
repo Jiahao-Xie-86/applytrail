@@ -112,5 +112,34 @@ eq('no false match on substring', m({ senderName: 'Metabase', senderEmail: 'hell
 
   const sc = await E.process([{ source: 'list', legacyId: 'tsc', subject: 'Thank you for applying to Scale AI', body: 'Thanks for applying.', senderName: 'Scale AI Recruiting', senderEmail: 'no-reply@ashbyhq.com', dateText: recent }]);
   eq('unmatched: title guess not a copy of company', [sc[0].guessCompany, sc[0].guessTitle], ['Scale AI', '']);
+
+  // ---------- sender before body; tool names are not employers ----------
+  const unityMail = { subject: 'Thank you for applying', body: 'Thank you for applying to Unity. If selected, we will set up a call over Google Meet.', senderName: 'Unity', senderEmail: 'unitytech@myworkday.com' };
+  eq('workday email: sender names the company', [E.match(unityMail, apps, null).app, E.guessCompany(unityMail)], [null, 'Unity']);
+  const withUnity = [...apps, mk('Unity', 'Software Engineer Intern', '2026-11-02')];
+  const meet = { subject: 'Next steps', body: 'We would like to schedule a technical interview. Join with Google Meet: meet.google.com/abc', senderName: 'Jane Doe', senderEmail: 'jane.doe@unity.com' };
+  eq('google meet link does not pick google', (E.match(meet, withUnity, null).app || {}).company, 'Unity');
+  const invite = { subject: 'Invitation: Interview with Unity @ Tue Nov 10, 2026 2pm', body: 'Join with Google Meet', senderName: 'Google Calendar', senderEmail: 'calendar-notification@google.com' };
+  eq('calendar invite: company from subject', [(E.match(invite, withUnity, null).app || {}).company, E.guessCompany(invite)], ['Unity', 'Unity']);
+  const personal = { subject: 'Following up', body: 'Great talking about the role at Stripe. Can we schedule a call?', senderName: 'Jane Doe', senderEmail: 'jane.doe@gmail.com' };
+  eq('personal mail: body still matches', (E.match(personal, apps, null).app || {}).company, 'Stripe');
+
+  // ---------- a posting viewed recently fills in what the email lacks ----------
+  const posting = {
+    url: 'https://unitytech.wd1.myworkdayjobs.com/en-US/Unity/job/SF/Software-Engineer-Intern_JOBREQ-1', company: 'Unity', title: 'Software Engineer Intern, Graphics',
+    location: 'San Francisco, CA', source: 'Workday', description: 'Build rendering features in C++. '.repeat(20), jobType: 'intern', key: 'k1', host: 'unitytech.wd1.myworkdayjobs.com', at: Date.now(),
+  };
+  await local.set({ recentJobs: [posting] });
+  const conf = await E.process([{ source: 'open', legacyId: 'u1', ...unityMail, dateText: recent }], '/mail/u/0');
+  const ua = conf[0] && (await S.get(conf[0].appId));
+  eq('confirmation of a viewed posting records it',
+    [conf[0] && conf[0].state, conf[0] && conf[0].created, ua && ua.company, ua && ua.title, ua && ua.source, ua && ua.description.length > 200, ua && ua.appliedDate],
+    ['applied', true, 'Unity', 'Software Engineer Intern, Graphics', 'Workday', true, '2026-11-03']);
+  await E.undo(conf[0].id);
+  eq('undo removes the recorded posting', await S.get(conf[0].appId), null);
+  const oa = await E.process([{ source: 'open', legacyId: 'u2', subject: 'Unity coding assessment', body: 'Please complete the online assessment on HackerRank.', senderName: 'Unity', senderEmail: 'unitytech@myworkday.com', dateText: recent }], '/mail/u/0');
+  eq('other email types only suggest', [oa[0] && oa[0].state, oa[0] && oa[0].guessTitle], ['unmatched', 'Software Engineer Intern, Graphics']);
+  const fromOa = await S.get((await E.resolve(oa[0].id, 'create')).appId);
+  eq('create uses the viewed posting', [fromOa.title, fromOa.status, fromOa.description.length > 200], ['Software Engineer Intern, Graphics', 'oa', true]);
   console.log(fail ? `\n${fail} FAILED` : '\nALL PASSED');
 })();

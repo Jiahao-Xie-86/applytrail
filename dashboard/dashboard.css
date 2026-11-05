@@ -61,6 +61,7 @@ main { max-width: 1320px; margin: 0 auto; padding: 18px 24px 40px; display: flex
 .ev-sub { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ev-sub a { color: var(--muted); text-decoration: none; }
 .ev-sub a:hover { color: var(--accent); text-decoration: underline; }
+.ev-from { color: var(--muted); }
 .ev-actions { display: flex; gap: 6px; align-items: center; }
 .ev-actions button { padding: 3px 10px; font-size: 12px; }
 .ev-actions select { width: 160px; padding: 3px 6px; font-size: 12px; }

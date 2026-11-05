@@ -20,9 +20,32 @@ const DASHBOARD = chrome.runtime.getURL('dashboard/dashboard.html');
 
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') chrome.tabs.create({ url: DASHBOARD + '#welcome' });
+  if (reason === 'install' || reason === 'update') injectIntoOpenTabs();
   chrome.alarms.create('jt-sync', { periodInMinutes: 5 });
   syncSoon();
 });
+
+// Chrome only adds content scripts to pages loaded after install, and a reload/update cuts off
+// the old copies. Inject into the tabs that are already open, following the manifest's rules.
+function matchPattern(p) {
+  const m = /^(\*|https?):\/\/([^/]+)(\/.*)$/.exec(p);
+  if (!m) return /$^/;
+  const esc = (s) => s.replace(/[.+?^${}()|[\]\\*]/g, '\\$&');
+  const host = m[2] === '*' ? '[^/]+' : m[2].startsWith('*.') ? `(?:[^/]+\\.)?${esc(m[2].slice(2))}` : esc(m[2]);
+  return new RegExp(`^${m[1] === '*' ? 'https?' : m[1]}://${host}${esc(m[3]).replace(/\\\*/g, '.*')}$`);
+}
+
+async function injectIntoOpenTabs() {
+  const entries = chrome.runtime.getManifest().content_scripts || [];
+  const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] }).catch(() => []);
+  for (const tab of tabs) {
+    for (const cs of entries) {
+      const hit = (list) => (list || []).some((p) => matchPattern(p).test(tab.url || ''));
+      if (!hit(cs.matches) || hit(cs.exclude_matches)) continue;
+      chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: !!cs.all_frames }, files: cs.js }).catch(() => {});
+    }
+  }
+}
 
 // ---------- cloud sync: pull every 5 min / at startup, push shortly after local edits ----------
 
@@ -53,15 +76,45 @@ async function getSeen(tabId) {
 
 chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove('seen:' + tabId));
 
-// The confirmation page rarely contains the JD. Merge with the job last viewed in
-// this tab, or in the tab that opened it (LinkedIn "Apply" opens the ATS in a new tab).
+// ---------- recently viewed postings (storage.local, this computer only, not synced) ----------
+// Lets a confirmation email, or a submit page with no job details, be matched to the posting.
+const RECENT_MAX = 40;
+const RECENT_TTL = 21 * 864e5;
+const hostOf = (url) => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
+};
+const sameCompany = (a, b) => A.dedupeKey(a, '') === A.dedupeKey(b, '');
+
+async function rememberRecent(job) {
+  const key = A.canonicalUrl(job.url || '');
+  if (!key || !job.title) return;
+  const now = Date.now();
+  const list = ((await chrome.storage.local.get('recentJobs')).recentJobs || []).filter((j) => j.key !== key && now - j.at < RECENT_TTL);
+  const entry = { ...job, description: (job.description || '').slice(0, 20000), key, host: hostOf(job.url), at: now };
+  await chrome.storage.local.set({ recentJobs: [entry, ...list].slice(0, RECENT_MAX) });
+}
+
+// The posting viewed most recently on the same site (and company), within the last few hours.
+async function recentOnSite(url, company) {
+  const host = hostOf(url);
+  const list = (await chrome.storage.local.get('recentJobs')).recentJobs || [];
+  return list.find((j) => j.host === host && Date.now() - j.at < SEEN_TTL && (!company || sameCompany(company, j.company))) || null;
+}
+
+// The confirmation page rarely contains the JD. Merge with the job last viewed in this tab,
+// in the tab that opened it (LinkedIn "Apply" opens the ATS in a new tab), or on the same site.
 async function resolveJob(current, tab) {
   current = current || { url: tab.url };
   if (current.title && (current.description || '').length > 200) return current;
-  const seen = (await getSeen(tab.id)) || (await getSeen(tab.openerTabId));
+  const seen = (await getSeen(tab.id)) || (await getSeen(tab.openerTabId)) || (await recentOnSite(current.url || tab.url, current.company));
   if (!seen) return current;
   // Different posting than the one cached for this tab → trust the current page.
   if (current.title && A.dedupeKey('', current.title) !== A.dedupeKey('', seen.title)) return current;
+  if (current.company && seen.company && !sameCompany(current.company, seen.company)) return current;
   const merged = { ...seen };
   for (const [k, v] of Object.entries(current)) {
     const empty = !merged[k] || (Array.isArray(merged[k]) && !merged[k].length);
@@ -80,6 +133,7 @@ function toast(tabId, payload) {
 const handlers = {
   async JT_JOB_SEEN({ job }, sender) {
     if (sender.tab) await chrome.storage.session.set({ ['seen:' + sender.tab.id]: { job, at: Date.now() } });
+    await rememberRecent(job);
   },
 
   async JT_APPLY_DETECTED({ job }, sender) {
@@ -137,7 +191,11 @@ const handlers = {
     if (!sender.tab || (!changed.length && !pending.length)) return;
     const st = (id) => JT.label(JT.STATUSES, id);
     const lines = [
-      ...changed.map((e) => t('{company}：{from} → {to}', { company: e.company, from: st(e.prevStatus), to: st(e.newStatus) })),
+      ...changed.map((e) =>
+        e.created
+          ? t('{company}：已从邮件创建记录（{status}）', { company: e.company, status: st(e.newStatus) })
+          : t('{company}：{from} → {to}', { company: e.company, from: st(e.prevStatus), to: st(e.newStatus) })
+      ),
       ...pending.map((e) => t('待确认 · {type}：{who}', { type: E.TYPES[e.type].label, who: e.guessCompany || e.subject })),
     ];
     const undoIds = changed.map((e) => e.id);

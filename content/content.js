@@ -2,8 +2,25 @@
 // being viewed, and detects "thanks for applying" screens so the application
 // gets recorded automatically.
 (function () {
-  if (window.__JT_CONTENT_LOADED__) return;
-  window.__JT_CONTENT_LOADED__ = true;
+  // After the extension is reloaded or updated, the copy already in the page is cut off from it
+  // (chrome.runtime.id is gone) and the background injects a fresh copy, which takes over.
+  const alive = () => {
+    try {
+      return !!chrome.runtime.id;
+    } catch {
+      return false;
+    }
+  };
+  if (window.__JT_CONTENT_ALIVE__ && window.__JT_CONTENT_ALIVE__()) return;
+  window.__JT_CONTENT_ALIVE__ = alive;
+  const send = (msg) => {
+    if (!alive()) return Promise.resolve();
+    try {
+      return chrome.runtime.sendMessage(msg).catch(() => {});
+    } catch {
+      return Promise.resolve();
+    }
+  };
 
   const JT = globalThis.JT;
   const A = JT.analyze;
@@ -40,8 +57,13 @@
     /your application was sent to/i, // LinkedIn Easy Apply
     /(you['’]ve|you have) successfully (applied|submitted)/i,
     /successfully submitted your application/i,
+    /\byou(['’]ve| have) (successfully )?submitted (a |an |your )?(job )?application\b/i, // Workday
+    /\bapplication (was |has been )?successfully submitted\b/i,
   ];
-  const WEAK = [/\bapplication (submitted|received|complete)\b/i];
+  const WEAK = [/\bapplication (submitted|received|complete)\b/i, /\bsuccessfully submitted\b/i];
+  // Workday goes back to the job list with ?Job_Application_ID=… right after you submit. Its
+  // message differs per employer, so the URL is the reliable signal.
+  const SUBMITTED_URL = /[?&](job_application_id|jobapplicationid)=\w/i;
   // Job boards show "Application submitted" badges on listings, so only trust strong phrases there.
   const BOARD = /linkedin\.com$|indeed\.com$|glassdoor\.(com|ca)$|joinhandshake\.com$/;
   const CONFIRM_URL = /(thank|confirmation|confirm|success|submitted|post-?apply|complete)/i;
@@ -58,6 +80,15 @@
   }
 
   function check(reason) {
+    if (!alive()) return;
+    if (SUBMITTED_URL.test(location.search) && A.isKnownJobHost(host)) {
+      const key = 'submitted|' + location.search;
+      if (!fired.has(key)) {
+        fired.add(key);
+        onApplied(true);
+      }
+      return;
+    }
     const st = matchState();
     const prev = lastState;
     lastState = st;
@@ -86,17 +117,19 @@
     }
   }
 
-  function onApplied() {
-    chrome.runtime.sendMessage({ type: 'JT_APPLY_DETECTED', job: extractSafe() }).catch(() => {});
+  // listPage: the page after submitting is the employer's job list (Workday). Only the company
+  // comes from it; the background fills in the posting viewed earlier in this tab.
+  function onApplied(listPage) {
+    const job = extractSafe();
+    send({ type: 'JT_APPLY_DETECTED', job: listPage ? { url: location.href, company: job.company || '' } : job });
   }
 
   // Remember the job being viewed so the confirmation page (which usually has
   // no JD) can be matched back to it.
   function rememberJob() {
+    if (!alive()) return;
     const job = extractSafe();
-    if (job.title && (job.description || '').length > 200) {
-      chrome.runtime.sendMessage({ type: 'JT_JOB_SEEN', job }).catch(() => {});
-    }
+    if (job.title && (job.description || '').length > 200) send({ type: 'JT_JOB_SEEN', job });
   }
 
   async function start() {
@@ -167,9 +200,9 @@
     root.querySelectorAll('button').forEach((btn) =>
       btn.addEventListener('click', async () => {
         const act = btn.dataset.act;
-        if (act === 'open') chrome.runtime.sendMessage({ type: 'JT_OPEN_DASHBOARD', appId: msg.appId, hash: msg.hash });
+        if (act === 'open') send({ type: 'JT_OPEN_DASHBOARD', appId: msg.appId, hash: msg.hash });
         if (act === 'undo') {
-          await chrome.runtime.sendMessage(
+          await send(
             msg.mode === 'email'
               ? { type: 'JT_EMAIL_UNDO', eventIds: msg.undoIds }
               : { type: 'JT_UNDO', appId: msg.appId, created: msg.created, prevStatus: msg.prevStatus }

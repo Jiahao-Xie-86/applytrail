@@ -17,7 +17,7 @@ function makePage(url, bodyHtml) {
   const sent = [];
   let listener = null;
   w.chrome = {
-    runtime: {
+    runtime: { id: 'test-ext',
       onMessage: { addListener: (fn) => (listener = fn) },
       sendMessage: (msg) => { sent.push(msg); return Promise.resolve({ ok: true }); },
     },
@@ -64,6 +64,50 @@ const JD = '<h2>Responsibilities</h2><p>' + 'Build backend services in Python an
     p.w.document.body.insertAdjacentHTML('beforeend', '<div role="dialog"><h2>Application sent</h2><p>Your application was sent to Acme!</p></div>');
     await sleep(1400);
     ok('linkedin easy apply: detected', p.sent.some((m) => m.type === 'JT_APPLY_DETECTED'));
+  }
+
+  // 3b) Workday: posting -> apply steps -> back on the job list with ?Job_Application_ID=… (SPA).
+  {
+    const p = makePage(
+      'https://unitytech.wd1.myworkdayjobs.com/en-US/Unity/job/San-Francisco-CA-USA/Software-Engineer-Intern_JOBREQ-2616001',
+      `<h2 data-automation-id="jobPostingHeader">Software Engineer Intern</h2><div data-automation-id="jobPostingDescription">${JD}</div>`
+    );
+    await sleep(1700);
+    const seen = p.sent.find((m) => m.type === 'JT_JOB_SEEN');
+    ok('workday: company is the site name, not the tenant id', seen && seen.job.company === 'Unity', seen ? seen.job.company : '');
+    p.w.document.body.innerHTML = '<p>136 JOBS FOUND</p><a>Senior Data Engineer</a><p>' + 'Posted Today. '.repeat(30) + '</p>';
+    p.w.history.pushState({}, '', '/en-US/Unity?source=LinkedIn&Job_Application_ID=bc8df09d75e2900187b8120f74220000');
+    await sleep(2800);
+    const hits = p.sent.filter((m) => m.type === 'JT_APPLY_DETECTED');
+    ok('workday: submit detected from the URL', hits.length === 1, JSON.stringify(hits.map((m) => m.job)));
+    ok('workday: list page sends no title or JD', hits[0] && !hits[0].job.title && !hits[0].job.description && hits[0].job.company === 'Unity');
+    p.w.dispatchEvent(new p.w.MouseEvent('click'));
+    p.w.document.body.dispatchEvent(new p.w.MouseEvent('click', { bubbles: true }));
+    await sleep(1500);
+    ok('workday: reported once', p.sent.filter((m) => m.type === 'JT_APPLY_DETECTED').length === 1);
+  }
+
+  // 3c) Workday confirmation wording
+  {
+    const p = makePage('https://acme.wd5.myworkdayjobs.com/en-US/External/job/NY/Analyst_R1', '<p>Review</p>');
+    await sleep(1700);
+    p.w.document.body.dispatchEvent(new p.w.MouseEvent('click', { bubbles: true }));
+    // A space keeps the words apart, as the browser's innerText would (jsdom joins blocks).
+    p.w.document.body.insertAdjacentHTML('beforeend', ' <div role="dialog"><h2>You have submitted a Job Application</h2></div>');
+    await sleep(1500);
+    ok('workday: "You have submitted" detected', p.sent.some((m) => m.type === 'JT_APPLY_DETECTED'));
+  }
+
+  // 3d) A copy cut off by an extension reload hands over to a fresh, re-injected copy.
+  {
+    const p = makePage('https://jobs.lever.co/acme/1', '<p>x</p>');
+    const before = p.listener();
+    p.w.eval(code); // injected again while the first copy is still connected: ignored
+    ok('reinjection: live copy kept', p.listener() === before);
+    p.w.chrome.runtime.id = undefined; // extension reloaded: the old copy is orphaned
+    p.w.eval(code);
+    p.w.chrome.runtime.id = 'test-ext';
+    ok('reinjection: new copy takes over', p.listener() !== before);
   }
 
   // 4) Unrelated site -> content script stays idle
