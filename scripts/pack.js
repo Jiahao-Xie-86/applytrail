@@ -1,13 +1,17 @@
-// Builds the Chrome Web Store upload: dist/job-tracker-<version>.zip
+// Builds the Chrome Web Store upload: dist/applytrail-<version>.zip
 // Usage: node scripts/pack.js
 // Only the files the extension needs are included, and the dev-only "key" field is
 // removed from manifest.json (the store assigns its own key).
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const INCLUDE = ['manifest.json', 'background.js', 'content', 'dashboard', 'icons', 'lib', 'popup', 'ui'];
+const INCLUDE = ['manifest.json', '_locales', 'background.js', 'content', 'dashboard', 'icons', 'lib', 'popup', 'ui'];
+
+// Refuse to package UI text without an English translation.
+execFileSync(process.execPath, [path.join(__dirname, 'check-i18n.js')], { stdio: 'inherit' });
 
 function walk(rel) {
   const abs = path.join(ROOT, rel);
@@ -81,7 +85,7 @@ const entries = INCLUDE.flatMap(walk).map((name) => ({
   data: name === 'manifest.json' ? Buffer.from(JSON.stringify(manifest, null, 2) + '\n') : fs.readFileSync(path.join(ROOT, name)),
 }));
 
-const out = path.join(ROOT, 'dist', `job-tracker-${manifest.version}.zip`);
+const out = path.join(ROOT, 'dist', `applytrail-${manifest.version}.zip`);
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, zip(entries));
 console.log(`${path.relative(ROOT, out)}  (${entries.length} files, ${Math.round(fs.statSync(out).size / 1024)} KB)`);

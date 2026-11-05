@@ -1,0 +1,14 @@
+{
+  "name": "applytrail",
+  "private": true,
+  "description": "ApplyTrail – Job Application Tracker (Chrome extension). No build step; npm is only needed for tests.",
+  "license": "MIT",
+  "scripts": {
+    "test": "node test/run.js",
+    "check-i18n": "node scripts/check-i18n.js",
+    "pack": "node scripts/pack.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}

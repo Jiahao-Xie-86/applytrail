@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ApplyTrail – Job Application Tracker</title>
+  <meta name="description" content="A free, open-source Chrome extension that records your job applications, saves the job description, tracks interviews and reads recruiting emails in Gmail. Your data stays in your browser and your own Google Drive.">
+  <link rel="icon" href="img/icon128.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-show="en">
+  <header class="bar">
+    <a class="brand" href="./"><img src="img/icon128.png" alt="" width="28" height="28">ApplyTrail</a>
+    <nav>
+      <a href="privacy.html"><span lang="en">Privacy</span><span lang="zh-CN">隐私政策</span></a>
+      <a href="https://github.com/Jiahao-Xie-86/applytrail">GitHub</a>
+      <button id="langBtn" type="button" aria-label="Switch language / 切换语言">中文</button>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1 lang="en">Every job application, tracked for you</h1>
+    <h1 lang="zh-CN">每一次投递，都帮你记下来</h1>
+    <p lang="en">ApplyTrail is a free Chrome extension for internship and full-time job searches. It records each application with its full job description, follows up through your Gmail, and keeps your interview prep in one place.</p>
+    <p lang="zh-CN">ApplyTrail 是一个免费的 Chrome 插件，适合实习和全职求职：自动记录每次投递和完整 JD，从 Gmail 跟进进度，把面试准备放在一个地方。</p>
+    <div class="cta">
+      <a class="btn primary disabled" id="storeLink" href="#install"><span lang="en">Chrome Web Store (coming soon)</span><span lang="zh-CN">Chrome 应用商店（即将上架）</span></a>
+      <a class="btn" href="https://github.com/Jiahao-Xie-86/applytrail"><span lang="en">Source code</span><span lang="zh-CN">源代码</span></a>
+    </div>
+  </section>
+
+  <div class="shot">
+    <img lang="en" src="img/tracker-en.png" width="1280" height="800" alt="ApplyTrail tracker: application counts, weekly chart, upcoming interviews, recognized emails and the list of applications">
+    <img lang="zh-CN" src="img/tracker-zh.png" width="1280" height="800" alt="ApplyTrail 追踪表：投递统计、每周柱状图、即将到来的面试、识别出的邮件和投递列表">
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3 lang="en">Records itself</h3><h3 lang="zh-CN">自动记录</h3>
+      <p lang="en">When a "Thank you for applying" page appears on Greenhouse, Lever, Workday, Ashby, LinkedIn Easy Apply, Indeed and others, the application is saved. You can undo it.</p>
+      <p lang="zh-CN">在 Greenhouse、Lever、Workday、Ashby、LinkedIn Easy Apply、Indeed 等网站提交申请后，出现 “Thank you for applying” 时自动保存，可撤销。</p>
+    </div>
+    <div class="card">
+      <h3 lang="en">One click on any posting</h3><h3 lang="zh-CN">任何职位页一键保存</h3>
+      <p lang="en">Company, title, location, salary, visa sponsorship and the full JD are filled in for you, so the posting is still there after it is taken down.</p>
+      <p lang="zh-CN">自动填好公司、职位、地点、薪资、签证 sponsor 情况和完整 JD，职位下线后也能看。</p>
+    </div>
+    <div class="card">
+      <h3 lang="en">Reads your recruiting emails</h3><h3 lang="zh-CN">识别求职邮件</h3>
+      <p lang="en">In Gmail on the web, online assessments, interview invitations, rejections and offers update the matching application.</p>
+      <p lang="zh-CN">在 Gmail 网页版里识别 OA、面试邀请、拒信和 Offer，自动更新对应投递的状态。</p>
+    </div>
+    <div class="card">
+      <h3 lang="en">Interview prep</h3><h3 lang="zh-CN">面试准备</h3>
+      <p lang="en">Log each round, see the skills the JD asks for, open Glassdoor, LeetCode and Levels.fyi in one click, and copy an AI prompt built from the JD and your notes.</p>
+      <p lang="zh-CN">记录每轮面试，查看 JD 要求的技能，一键打开 Glassdoor、LeetCode、Levels.fyi，复制一段包含 JD 和你笔记的 AI 提示词。</p>
+    </div>
+    <div class="card">
+      <h3 lang="en">Syncs through your Google account</h3><h3 lang="zh-CN">Google 账号同步</h3>
+      <p lang="en">Sign in once on each computer. Records sync through a hidden app folder in your own Google Drive.</p>
+      <p lang="zh-CN">每台电脑登录一次即可，记录通过你自己 Google Drive 的隐藏应用文件夹同步。</p>
+    </div>
+    <div class="card">
+      <h3 lang="en">Private by design</h3><h3 lang="zh-CN">隐私</h3>
+      <p lang="en">No developer server, no analytics, no ads. Your data stays in your browser and your own Drive. English and Chinese interface.</p>
+      <p lang="zh-CN">没有开发者服务器，没有统计和广告，数据只在你的浏览器和你自己的 Drive 里。中英文界面。</p>
+    </div>
+  </div>
+
+  <section class="section" id="install">
+    <h2 lang="en">Install</h2><h2 lang="zh-CN">安装</h2>
+    <p lang="en">ApplyTrail is being reviewed for the Chrome Web Store. Until then you can install it from the source code:</p>
+    <p lang="zh-CN">ApplyTrail 正在等待 Chrome 应用商店审核。在那之前，可以从源代码安装：</p>
+    <ol lang="en">
+      <li>Download the code from <a href="https://github.com/Jiahao-Xie-86/applytrail/archive/refs/heads/main.zip">GitHub</a> and unzip it.</li>
+      <li>Open <code>chrome://extensions</code> and turn on <b>Developer mode</b> (top right).</li>
+      <li>Click <b>Load unpacked</b> and choose the unzipped folder (the one that contains <code>manifest.json</code>).</li>
+      <li>Pin ApplyTrail to the toolbar. To sync, click <b>☁ Sign in to sync</b> in the tracker.</li>
+    </ol>
+    <ol lang="zh-CN">
+      <li>从 <a href="https://github.com/Jiahao-Xie-86/applytrail/archive/refs/heads/main.zip">GitHub</a> 下载代码并解压。</li>
+      <li>打开 <code>chrome://extensions</code>，打开右上角的<b>开发者模式</b>。</li>
+      <li>点<b>加载已解压的扩展程序</b>，选择解压后的文件夹（里面有 <code>manifest.json</code> 的那一层）。</li>
+      <li>把 ApplyTrail 固定到工具栏。要同步，在追踪表里点 <b>☁ 登录同步</b>。</li>
+    </ol>
+  </section>
+
+  <section class="section">
+    <h2 lang="en">Questions or problems?</h2><h2 lang="zh-CN">有问题？</h2>
+    <p lang="en">Open an issue on <a href="https://github.com/Jiahao-Xie-86/applytrail/issues">GitHub</a> or email <a href="mailto:jiahaox666@gmail.com">jiahaox666@gmail.com</a>. See the <a href="privacy.html">privacy policy</a> for exactly what the extension reads and stores.</p>
+    <p lang="zh-CN">在 <a href="https://github.com/Jiahao-Xie-86/applytrail/issues">GitHub</a> 提 issue，或发邮件到 <a href="mailto:jiahaox666@gmail.com">jiahaox666@gmail.com</a>。插件读取和保存哪些数据，见<a href="privacy.html#zh">隐私政策</a>。</p>
+  </section>
+
+  <footer class="foot">
+    <span lang="en">ApplyTrail is open source under the MIT License.</span>
+    <span lang="zh-CN">ApplyTrail 以 MIT 许可证开源。</span>
+    · <a href="privacy.html">Privacy</a>
+  </footer>
+
+  <script>
+    (function () {
+      var body = document.body;
+      var btn = document.getElementById('langBtn');
+      function show(lang) {
+        body.setAttribute('data-show', lang);
+        document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+        btn.textContent = lang === 'zh' ? 'EN' : '中文';
+        try { localStorage.setItem('lang', lang); } catch (e) {}
+      }
+      var saved = null;
+      try { saved = localStorage.getItem('lang'); } catch (e) {}
+      show(saved || (/^zh/i.test(navigator.language || '') ? 'zh' : 'en'));
+      btn.addEventListener('click', function () { show(body.getAttribute('data-show') === 'zh' ? 'en' : 'zh'); });
+    })();
+  </script>
+</body>
+</html>
