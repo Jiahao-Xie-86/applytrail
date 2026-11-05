@@ -105,23 +105,14 @@
 
 ## 一次性配置（只做一次，之后任何电脑都不用再配）
 
-### 1. Google 登录（约 10 分钟）
+### 1. Google 登录 ✅ 已完成（2026-11-04）
 
-插件要用 Google 登录，需要在 Google Cloud 注册一个 “登录应用”，拿到一个 Client ID。用 **个人 Gmail** 做，学校账号可能被管理员限制。
+- Google Cloud 项目：`job-tracker-513802`（账号 jiahaox666@gmail.com），已开启 Google Drive API
+- 登录授权页：App name `Job Tracker`，Audience External，权限 `drive.appdata`（Google 归为 “非敏感”）
+- OAuth client：`Job Tracker extension`（Web application），redirect URI `https://pbdigaoohikokfaehfdfajdgdlgejmbp.chromiumapp.org/`，Client ID 已写进 `lib/google.js`
+- 当前是 **Testing** 状态：只有加进 **Test users** 的账号能登录（已加 jiahaox666@gmail.com；想用别的 Google 账号同步，到 [Audience](https://console.cloud.google.com/auth/audience?project=job-tracker-513802) → Test users → Add users 加上）。Testing 状态下 Google 每 7 天让登录过期一次，插件会提示 “需要重新登录”，点一下即可
 
-1. 打开 <https://console.cloud.google.com/projectcreate>，项目名填 `Job Tracker` → **Create**
-2. 打开 <https://console.cloud.google.com/apis/library/drive.googleapis.com>（确认左上角选的是刚建的项目）→ **Enable**
-3. 打开 <https://console.cloud.google.com/auth/overview> → **Get started**：
-   - App name：`Job Tracker`；User support email：你的 Gmail
-   - Audience：**External**
-   - Contact information：你的 Gmail → 同意条款 → **Create**
-4. 左侧 **Data Access** → **Add or remove scopes** → 在筛选框搜 `drive.appdata`，勾选 `.../auth/drive.appdata` → **Update** → **Save**
-5. 左侧 **Audience** → Publishing status 下点 **Publish app** → Confirm（变成 In production。这个权限属于 Google 的 “非敏感” 级别，不需要审核；不发布的话每 7 天要重新登录一次）
-6. 左侧 **Clients** → **Create client**：
-   - Application type：**Web application**；Name：`Job Tracker extension`
-   - Authorized redirect URIs → **Add URI**：`https://pbdigaoohikokfaehfdfajdgdlgejmbp.chromiumapp.org/`
-   - **Create** → 复制 **Client ID**（形如 `1234…apps.googleusercontent.com`，不是密码，可以公开）
-7. 把 Client ID 填进 `lib/google.js` 的 `G.CLIENT_ID = '';`（或者发给我），然后在 `chrome://extensions` 点 🔄
+**发布为正式（去掉每周重新登录）**：Google 要求先在 [Branding](https://console.cloud.google.com/auth/branding?project=job-tracker-513802) 填 Application home page 和 Privacy policy link，这两个网址的域名要加到 Authorized domains。所以先把 `store/privacy-policy.md` 发布成公开网页（上架商店本来也需要），再到 [Audience](https://console.cloud.google.com/auth/audience?project=job-tracker-513802) 点 **Publish app**。
 
 ### 2. 上架 Chrome 应用商店（不公开链接）
 
