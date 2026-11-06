@@ -22,9 +22,23 @@ const DASHBOARD = chrome.runtime.getURL('dashboard/dashboard.html');
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') chrome.tabs.create({ url: DASHBOARD + '#welcome' });
   if (reason === 'install' || reason === 'update') injectIntoOpenTabs();
+  if (reason === 'update') migrateLinks();
   chrome.alarms.create('jt-sync', { periodInMinutes: 5 });
   syncSoon();
 });
+
+// 1.3: Workday records link to the posting (/job/) instead of the job search beside it
+// (/details/), and every link form of one Workday posting gets the same key.
+async function migrateLinks() {
+  for (const a of await S.all()) {
+    if (!/myworkday(jobs|site)\.com/i.test(a.url || '')) continue;
+    const url = A.postingUrl(a.url);
+    if (url !== a.url || A.canonicalUrl(url) !== a.canonicalUrl) {
+      a.url = url;
+      await S.save(a);
+    }
+  }
+}
 
 // Chrome only adds content scripts to pages loaded after install, and a reload/update cuts off
 // the old copies. Inject into the tabs that are already open, following the manifest's rules.
@@ -126,6 +140,34 @@ async function resolveJob(current, tab) {
 
 // The ATS's own copy of the JD (the exact posting text, from Workday, Greenhouse, Lever or Ashby)
 // replaces what was read from the page. A record that already existed keeps a JD that looks fine.
+// Saves the job as applied (merged with the posting viewed before the confirmation page) and
+// shows the notice with Edit / Undo.
+async function record(job, tab, auto) {
+  const resolved = await resolveJob(job, tab);
+  if (!resolved.title && !resolved.company) return { state: 'none' };
+  const existing = S.findMatch(resolved, await S.all());
+  if (existing && existing.status !== 'wishlist') {
+    toast(tab.id, {
+      mode: 'exists', appId: existing.id, title: existing.title, company: existing.company,
+      head: t('✓ 已在追踪中（{status}）', { status: JT.label(JT.STATUSES, existing.status) }),
+      buttons: [{ act: 'open', label: t('查看') }],
+    });
+    return { state: 'exists', appId: existing.id };
+  }
+  const prevStatus = existing ? existing.status : null;
+  const { app, created } = await S.upsertFromJob(resolved, 'applied');
+  fillJD(app.id, created);
+  toast(tab.id, {
+    mode: 'saved', appId: app.id, created, prevStatus, title: app.title, company: app.company,
+    head: !app.title ? t('✓ 已记录投递，但信息不全') : auto ? t('✓ 已自动记录投递') : t('✓ 已记录投递'),
+    buttons: [
+      { act: 'open', label: app.title ? t('编辑') : t('补充信息'), primary: true },
+      { act: 'undo', label: t('撤销') },
+    ],
+  });
+  return { state: 'saved', appId: app.id };
+}
+
 async function fillJD(appId, created) {
   try {
     const app = await S.get(appId);
@@ -151,35 +193,39 @@ const handlers = {
     await rememberRecent(job);
   },
 
+  // A "thanks for applying" page. Recorded only in automatic mode; by default the page's
+  // ApplyTrail button asks instead, and records when it is clicked (JT_RECORD).
   async JT_APPLY_DETECTED({ job }, sender) {
     const tab = sender.tab;
     if (!tab || A.isNotJobSite(tab.url)) return; // e.g. a "thank you for applying" email in Gmail
-    const settings = await S.getSettings();
-    if (!settings.autoDetect) return;
+    if ((await S.getSettings()).recordMode !== 'auto') return;
     await langReady;
-    const resolved = await resolveJob(job, tab);
-    if (!resolved.title && !resolved.company) return;
+    return record(job, tab, true);
+  },
 
-    const existing = S.findMatch(resolved, await S.all());
-    if (existing && existing.status !== 'wishlist') {
-      toast(tab.id, {
-        mode: 'exists', appId: existing.id, title: existing.title, company: existing.company,
-        head: t('✓ 已在追踪中（{status}）', { status: JT.label(JT.STATUSES, existing.status) }),
-        buttons: [{ act: 'open', label: t('查看') }],
-      });
-      return;
-    }
-    const prevStatus = existing ? existing.status : null;
-    const { app, created } = await S.upsertFromJob(resolved, 'applied');
-    fillJD(app.id, created);
-    toast(tab.id, {
-      mode: 'saved', appId: app.id, created, prevStatus, title: app.title, company: app.company,
-      head: app.title ? t('✓ 已自动记录投递') : t('✓ 已记录投递，但信息不全'),
-      buttons: [
-        { act: 'open', label: app.title ? t('编辑') : t('补充信息'), primary: true },
-        { act: 'undo', label: t('撤销') },
-      ],
-    });
+  // The "Record application" button on a job page.
+  async JT_RECORD({ job }, sender) {
+    const tab = sender.tab;
+    if (!tab || A.isNotJobSite(tab.url)) return { state: 'none' };
+    await langReady;
+    return record(job, tab, false);
+  },
+
+  // What the page button shows: its labels in the UI language, and whether this posting is tracked.
+  async JT_BUTTON_INFO({ url }) {
+    await langReady;
+    const app = url ? S.findMatch({ url }, await S.all()) : null;
+    return {
+      appId: app && app.status !== 'wishlist' ? app.id : '',
+      labels: {
+        record: t('＋ 记录投递'),
+        submitted: t('刚提交了申请？点这里记录'),
+        recorded: t('✓ 已记录'),
+        tip: t('ApplyTrail：把这个职位记录为“已投递”（职位、公司、JD 一起保存）'),
+        open: t('在追踪表中打开'),
+        hide: t('在这个页面隐藏'),
+      },
+    };
   },
 
   async JT_UNDO({ appId, created, prevStatus }) {
@@ -201,7 +247,8 @@ const handlers = {
     await chrome.storage.local.set({ gmailScan: { at: Date.now(), rows, opened } });
     if (!emails.length || !(await S.getSettings()).emailDetect) return;
     await langReady;
-    const events = await E.process(emails, account);
+    // Without automatic recording, a confirmation email for an untracked posting only suggests a record.
+    const events = await E.process(emails, account, { autoCreate: (await S.getSettings()).recordMode === 'auto' });
     const changed = events.filter((e) => e.state === 'applied');
     for (const e of changed) if (e.created) fillJD(e.appId, true);
     const pending = events.filter((e) => e.state === 'unmatched' || e.state === 'ambiguous');

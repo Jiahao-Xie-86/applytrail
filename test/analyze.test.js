@@ -60,7 +60,12 @@ eq('canon indeed', A.canonicalUrl('https://www.indeed.com/jobs?q=intern&vjk=abc1
 eq('canon gh confirm', A.canonicalUrl('https://job-boards.greenhouse.io/stripe/jobs/123456/confirmation?gh_src=x'), 'https://job-boards.greenhouse.io/stripe/jobs/123456');
 eq('canon lever thanks', A.canonicalUrl('https://jobs.lever.co/acme/abc-def/thanks'), 'https://jobs.lever.co/acme/abc-def');
 eq('canon lever apply', A.canonicalUrl('https://jobs.lever.co/acme/abc-def/apply?lever-source=LinkedIn'), 'https://jobs.lever.co/acme/abc-def');
-eq('canon wd apply', A.canonicalUrl('https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Intern_JR123/apply/applyManually'), 'https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Intern_JR123');
+// Workday: one key per posting, whatever the link form (locale, city, /details/, apply steps, ids).
+const WD_KEY = 'https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/Intern_JR123';
+eq('canon wd apply', A.canonicalUrl('https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Intern_JR123/apply/applyManually'), WD_KEY);
+eq('canon wd details', A.canonicalUrl('https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/details/Intern_JR123?q=ml&Job_Application_ID=abc'), WD_KEY);
+eq('posting link wd details', A.postingUrl('https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/details/Intern_JR123?q=ml&source=LinkedIn#x'), 'https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/Intern_JR123?source=LinkedIn');
+eq('posting link other sites untouched', A.postingUrl('https://stripe.com/jobs/search?gh_jid=555#top'), 'https://stripe.com/jobs/search?gh_jid=555');
 eq('canon gh_jid kept', A.canonicalUrl('https://stripe.com/jobs/search?gh_jid=555&utm_source=x'), 'https://stripe.com/jobs/search?gh_jid=555');
 
 // source / company

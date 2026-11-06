@@ -28,7 +28,7 @@
     <section id="welcome" class="card welcome hidden">
       <h2>开始使用</h2>
       <ol>
-        <li data-i18n="welcome1"><b>自动记录</b>：在 Greenhouse / Lever / Workday / Ashby / LinkedIn Easy Apply / Indeed 等网站提交申请后，出现 “Thank you for applying” 页面时会自动记录，右下角弹出提示（可撤销）。</li>
+        <li data-i18n="welcome1"><b>一键记录</b>：在职位页面（Greenhouse / Lever / Workday / Ashby / LinkedIn / Indeed 等）右下角点 <b>＋ 记录投递</b>，职位、公司和 JD 一起保存为“已投递”。提交申请后按钮会变蓝提醒你；不点就不会记录。</li>
         <li data-i18n="welcome2"><b>一键记录</b>：在任何职位页面点击浏览器右上角的插件图标（或按 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>J</kbd>），自动抓取公司、职位、地点、JD，确认后保存。抓不到 JD 时，先在网页上选中 JD 文字再点图标。</li>
         <li data-i18n="welcome3"><b>邮件识别</b>：用 Gmail 网页版时，会自动识别 OA 邀请、面试邀请、拒信和 Offer，更新对应投递的状态（可撤销）。</li>
         <li data-i18n="welcome4"><b>面试准备</b>：在这里点开任意一条记录，可以记录每轮面试、查看 JD 关键词、签证要求、一键打开面经 / 薪资调研链接。</li>
@@ -126,7 +126,11 @@
   <dialog id="settingsDlg">
     <form method="dialog" class="settings">
       <h2>设置</h2>
-      <label class="check"><input type="checkbox" id="sAuto"> 检测到 “投递成功” 页面时自动记录</label>
+      <label>记录投递的方式<select id="sMode">
+        <option value="button">点页面上的「记录投递」按钮（推荐）</option>
+        <option value="auto">检测到“投递成功”页面时自动记录</option>
+      </select></label>
+      <label class="check"><input type="checkbox" id="sButton"> 在职位页面右下角显示「记录投递」按钮</label>
       <label class="check"><input type="checkbox" id="sEmail"> 识别 Gmail 里的求职邮件（OA / 面试 / 拒信 / Offer）并更新状态</label>
       <label>插件弹窗里的默认状态<select id="sDefault"></select></label>
       <label>语言 / Language<select id="sLang">

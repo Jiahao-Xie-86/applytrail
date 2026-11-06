@@ -1,6 +1,6 @@
-// Content script: answers the popup's "extract" request, remembers the job
-// being viewed, and detects "thanks for applying" screens so the application
-// gets recorded automatically.
+// Content script: answers the popup's "extract" request, remembers the job being viewed, shows the
+// "Record application" button on job pages, and notices "thanks for applying" screens (the button
+// then offers to record; in automatic mode the application is recorded right away).
 (function () {
   // After the extension is reloaded or updated, the copy already in the page is cut off from it
   // (chrome.runtime.id is gone) and the background injects a fresh copy, which takes over.
@@ -79,6 +79,8 @@
 
   let lastState = null;
   const fired = new Set();
+  let mode = 'button'; // settings.recordMode
+  let buttonOn = false; // settings.showButton
 
   function matchState() {
     const t = document.body ? document.body.innerText : '';
@@ -129,8 +131,10 @@
   // listPage: the page after submitting is the employer's job list (Workday). Only the company
   // comes from it; the background fills in the posting viewed earlier in this tab.
   function onApplied(listPage) {
-    const job = extractSafe();
-    send({ type: 'JT_APPLY_DETECTED', job: listPage ? { url: location.href, company: job.company || '' } : job });
+    const found = extractSafe();
+    const job = listPage ? { url: location.href, company: found.company || '' } : found;
+    if (mode === 'auto') send({ type: 'JT_APPLY_DETECTED', job }).then((res) => res && res.appId && markRecorded(res.appId));
+    else offer(job, true);
   }
 
   // Remember the job being viewed so the confirmation page (which usually has
@@ -138,13 +142,18 @@
   function rememberJob() {
     if (!alive()) return;
     const job = extractSafe();
-    if (job.title && (job.description || '').length > 200) send({ type: 'JT_JOB_SEEN', job });
+    if (job.title && (job.description || '').length > 200) {
+      send({ type: 'JT_JOB_SEEN', job });
+      offer(job, false);
+    }
   }
 
   async function start() {
     let settings = {};
     try { settings = (await chrome.storage.local.get('settings')).settings || {}; } catch {}
-    if (settings.autoDetect === false || !isJobRelated()) return;
+    if (!isJobRelated()) return;
+    mode = settings.recordMode === 'auto' ? 'auto' : 'button';
+    buttonOn = isTop && settings.showButton !== false;
 
     setTimeout(() => { check('load'); rememberJob(); }, 1500);
     setTimeout(() => check('later'), 4000);
@@ -165,9 +174,86 @@
     setInterval(() => {
       if (location.href === lastUrl) return;
       lastUrl = location.href;
+      resetButton(); // another posting (or none) until the page says otherwise
       setTimeout(() => check('nav'), 1500);
       [2000, 6000].forEach((ms) => setTimeout(rememberJob, ms));
     }, 1000);
+  }
+
+  // ---------- "Record application" button (shadow DOM so page CSS can't interfere) ----------
+  // Shown on job postings, and on "thanks for applying" pages, where it is highlighted. Nothing is
+  // recorded until it is clicked (unless automatic mode is on in Settings).
+
+  let btnHost = null;
+  let btn = { url: '', info: null, job: null, submitted: false, appId: '', hidden: false };
+
+  async function offer(job, submitted) {
+    if (!buttonOn || btn.hidden || !alive()) return;
+    if (btn.url !== location.href) {
+      btn = { ...btn, url: location.href, info: null, submitted: false, appId: '' };
+      const info = await send({ type: 'JT_BUTTON_INFO', url: location.href });
+      if (btn.url !== location.href || !info || !info.labels) return;
+      btn.info = info;
+      btn.appId = info.appId || '';
+    }
+    if (!btn.info) return;
+    // A confirmation that replaced the posting on the same page keeps the posting's details.
+    if (!(btn.job && btn.job.title && !job.title)) btn.job = job;
+    if (submitted) btn.submitted = true;
+    renderButton();
+  }
+
+  function markRecorded(appId) {
+    btn.appId = appId || '';
+    if (btnHost) renderButton();
+  }
+
+  function resetButton() {
+    btn = { ...btn, url: '', info: null, job: null, submitted: false, appId: '' };
+    if (btnHost) btnHost.remove();
+    btnHost = null;
+  }
+
+  function renderButton() {
+    if (!btnHost) {
+      btnHost = document.createElement('div');
+      btnHost.style.cssText = 'position:fixed;right:20px;bottom:96px;z-index:2147483646;';
+      btnHost.attachShadow({ mode: 'open' });
+      document.documentElement.appendChild(btnHost);
+      if (toastHost && toastHost.shadowRoot.innerHTML) btnHost.style.visibility = 'hidden';
+    }
+    const L = btn.info.labels;
+    const esc = (v) => String(v || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    const state = btn.appId ? 'done' : btn.submitted ? 'hot' : '';
+    const text = btn.appId ? L.recorded : btn.submitted ? L.submitted : L.record;
+    btnHost.shadowRoot.innerHTML = `
+      <style>
+        .w{position:relative;font:13px/1.2 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+        .r{font:inherit;font-weight:600;border:0;border-radius:999px;padding:9px 15px;cursor:pointer;color:#f9fafb;
+           background:#111827;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+        .r:hover{filter:brightness(1.2)}
+        .r:disabled{opacity:.7;cursor:default}
+        .hot .r{background:#2563eb;animation:p 1.6s ease-in-out 3}
+        .done .r{background:#fff;color:#18864b;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+        .x{position:absolute;top:-7px;right:-7px;width:18px;height:18px;border-radius:50%;border:0;padding:0;cursor:pointer;
+           background:#4b5563;color:#fff;font-size:12px;line-height:18px;opacity:0;transition:opacity .15s}
+        .w:hover .x,.x:focus-visible{opacity:1}
+        @keyframes p{50%{box-shadow:0 0 0 8px rgba(37,99,235,.25)}}
+        @media (prefers-reduced-motion:reduce){.hot .r{animation:none}}
+      </style>
+      <div class="w ${state}"><button class="r" title="${esc(btn.appId ? L.open : L.tip)}">${esc(text)}</button><button class="x" title="${esc(L.hide)}" aria-label="${esc(L.hide)}">×</button></div>`;
+    const root = btnHost.shadowRoot;
+    root.querySelector('.r').addEventListener('click', async (e) => {
+      if (btn.appId) return send({ type: 'JT_OPEN_DASHBOARD', appId: btn.appId });
+      e.currentTarget.disabled = true;
+      const res = await send({ type: 'JT_RECORD', job: btn.job || extractSafe() });
+      markRecorded(res && res.appId);
+      if (!(res && res.appId) && btnHost) renderButton();
+    });
+    root.querySelector('.x').addEventListener('click', () => {
+      btn.hidden = true;
+      resetButton();
+    });
   }
 
   // ---------- toast (shadow DOM so page CSS can't interfere) ----------
@@ -182,6 +268,7 @@
       toastHost.attachShadow({ mode: 'open' });
       document.documentElement.appendChild(toastHost);
     }
+    if (btnHost) btnHost.style.visibility = 'hidden'; // same corner
     const root = toastHost.shadowRoot;
     const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
     // All text arrives from the background, already in the UI language.
@@ -218,6 +305,7 @@
               ? { type: 'JT_EMAIL_UNDO', eventIds: msg.undoIds }
               : { type: 'JT_UNDO', appId: msg.appId, created: msg.created, prevStatus: msg.prevStatus }
           );
+          if (msg.appId && msg.appId === btn.appId) markRecorded('');
         }
         hideToast();
       })
@@ -232,6 +320,7 @@
   function hideToast() {
     clearTimeout(toastTimer);
     if (toastHost) toastHost.shadowRoot.innerHTML = '';
+    if (btnHost) btnHost.style.visibility = '';
   }
 
   start();

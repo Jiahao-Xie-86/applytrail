@@ -63,6 +63,8 @@ const fullJob = {
 };
 
 (async () => {
+  // The checks below drive automatic recording; the default (button) mode is checked at the end.
+  await ctx.JT.store.setSettings({ recordMode: 'auto' });
   // Same-tab flow: view job, then thanks page with no title/JD.
   await send({ type: 'JT_JOB_SEEN', job: fullJob }, { id: 5 });
   await send({ type: 'JT_APPLY_DETECTED', job: { url: 'https://jobs.lever.co/acme/abc-123/thanks', title: '', company: 'Acme', description: '' } }, { id: 5 });
@@ -146,11 +148,37 @@ const fullJob = {
   ok('official JD: replaces the scraped text', acme && /^About the role\n/.test(acme.description) && /• Train models in PyTorch/.test(acme.description) && !/JOBS FOUND/.test(acme.description), acme && JSON.stringify(acme.description.slice(0, 80)));
   ok('official JD: location from the posting', acme && acme.location === 'New York, NY | Remote, USA' && acme.keywords.includes('PyTorch'), acme && acme.location);
 
-  // Auto-detect off -> nothing recorded.
-  await S.setSettings({ autoDetect: false });
+  // Default mode: a detected confirmation records nothing; the page button does.
+  await S.setSettings({ recordMode: 'button' });
   const before = apps().length;
-  await send({ type: 'JT_APPLY_DETECTED', job: { ...fullJob, url: 'https://x.com/jobs/1', company: 'X', title: 'Y' } }, { id: 10 });
-  ok('autoDetect off', apps().length === before);
+  const xJob = { ...fullJob, url: 'https://x.com/jobs/1', company: 'X', title: 'Y' };
+  await send({ type: 'JT_APPLY_DETECTED', job: xJob }, { id: 10 });
+  ok('button mode: detection alone records nothing', apps().length === before);
+  let info = await send({ type: 'JT_BUTTON_INFO', url: xJob.url }, { id: 10 });
+  ok('button info: labels in the UI language, not tracked yet', info.ok && info.labels.record && !info.appId, JSON.stringify(info.labels));
+  const res = await send({ type: 'JT_RECORD', job: xJob }, { id: 10 });
+  ok('button: click records as applied', res.state === 'saved' && apps().some((a) => a.id === res.appId && a.status === 'applied' && a.title === 'Y'));
+  info = await send({ type: 'JT_BUTTON_INFO', url: xJob.url }, { id: 10 });
+  ok('button info: tracked afterwards', info.appId === res.appId);
+  const again = await send({ type: 'JT_RECORD', job: xJob }, { id: 10 });
+  ok('button: second click finds the record', again.state === 'exists' && apps().length === before + 1);
+
+  // Workday links: /details/ (job search beside the posting) is stored as the posting's /job/ link,
+  // and both forms are the same posting.
+  const det = 'https://unitytech.wd1.myworkdayjobs.com/en-US/Unity/details/XMLNAME--Req-6087--Software-Developer_JOBREQ-2615965?q=machine+learning&source=LinkedIn&Job_Application_ID=bc8d';
+  const r2 = await send({ type: 'JT_RECORD', job: { ...fullJob, url: det, company: 'Unity', title: 'Machine Learning Engineer-Internship' } }, { id: 11 });
+  const saved = apps().find((a) => a.id === r2.appId);
+  ok('workday link: /job/ instead of /details/', saved && saved.url === 'https://unitytech.wd1.myworkdayjobs.com/en-US/Unity/job/XMLNAME--Req-6087--Software-Developer_JOBREQ-2615965?source=LinkedIn&Job_Application_ID=bc8d', saved && saved.url);
+  info = await send({ type: 'JT_BUTTON_INFO', url: 'https://unitytech.wd1.myworkdayjobs.com/Unity/job/Mountain-View-CA-USA/XMLNAME--Req-6087--Software-Developer_JOBREQ-2615965/apply/applyManually' }, { id: 11 });
+  ok('workday link: other forms of the posting match it', info.appId === r2.appId);
+
+  // Update: older records with a /details/ link are fixed.
+  const old = S.newApp({ ...fullJob, company: 'Old', title: 'Old Intern', status: 'applied' });
+  old.url = det;
+  await S.save(old);
+  onInstalled({ reason: 'update' });
+  await new Promise((r) => setTimeout(r, 50));
+  ok('update: old /details/ links fixed', (await S.get(old.id)).url.includes('/Unity/job/XMLNAME'), (await S.get(old.id)).url);
 
   console.log(fail ? `\n${fail} FAILED` : '\nALL PASSED');
 })();

@@ -20,13 +20,18 @@ function makePage(url, bodyHtml, opts = {}) {
   w.chrome = {
     runtime: { id: 'test-ext',
       onMessage: { addListener: (fn) => (listener = fn) },
-      sendMessage: (msg) => { sent.push(msg); return Promise.resolve({ ok: true }); },
+      sendMessage: (msg) => { sent.push(msg); return Promise.resolve({ ok: true, ...(REPLIES[msg.type] || {}) }); },
     },
-    storage: { local: { get: async () => ({}) } },
+    // Most checks below are about detection, so they run in automatic mode unless told otherwise.
+    storage: { local: { get: async () => ({ settings: opts.settings || { recordMode: 'auto' } }) } },
   };
   w.eval(code);
   return { dom, w, sent, listener: () => listener };
 }
+
+const LABELS = { record: 'REC', submitted: 'SUB', recorded: 'DONE', tip: 'tip', open: 'open', hide: 'hide' };
+const REPLIES = { JT_BUTTON_INFO: { appId: '', labels: LABELS }, JT_RECORD: { state: 'saved', appId: 'rec1' } };
+const buttonOf = (p) => [...p.w.document.documentElement.children].map((el) => el.shadowRoot && el.shadowRoot.querySelector('.w')).find(Boolean);
 
 const JD = '<h2>Responsibilities</h2><p>' + 'Build backend services in Python and Go. '.repeat(10) + '</p><h2>Qualifications</h2><p>' + 'Pursuing a BS in CS. '.repeat(10) + '</p>';
 
@@ -155,6 +160,48 @@ const JD = '<h2>Responsibilities</h2><p>' + 'Build backend services in Python an
     p.w.document.body.dispatchEvent(new p.w.MouseEvent('click', { bubbles: true }));
     await sleep(1400);
     ok(`not a job site: ${new URL(url).hostname}`, p.sent.length === 0, JSON.stringify(p.sent.map((m) => m.type)));
+  }
+
+  // 3h) Default (button) mode: a posting shows the button; a confirmation only highlights it.
+  {
+    const p = makePage('https://job-boards.greenhouse.io/acme/jobs/123', `<div class="job__title"><h1>Data Analyst Intern</h1></div><div class="job__description">${JD}</div><form><button id="submit">Submit application</button></form>`, { settings: {} });
+    await sleep(1700);
+    let b = buttonOf(p);
+    ok('button mode: posting shows the record button', b && b.querySelector('.r').textContent === 'REC' && !b.classList.contains('hot'));
+    p.w.document.getElementById('submit').dispatchEvent(new p.w.MouseEvent('click', { bubbles: true }));
+    p.w.document.body.innerHTML = '<h1>Thank you for applying.</h1><p>Your application has been submitted.</p>';
+    await sleep(1500);
+    b = buttonOf(p);
+    ok('button mode: nothing recorded on its own', !p.sent.some((m) => m.type === 'JT_APPLY_DETECTED' || m.type === 'JT_RECORD'));
+    ok('button mode: confirmation highlights the button', b && b.classList.contains('hot') && b.querySelector('.r').textContent === 'SUB');
+    b.querySelector('.r').click();
+    await sleep(50);
+    const rec = p.sent.find((m) => m.type === 'JT_RECORD');
+    ok('button mode: click records the posting', rec && rec.job.title === 'Data Analyst Intern' && rec.job.description.length > 200, rec ? rec.job.title : '');
+    b = buttonOf(p);
+    ok('button mode: then shows recorded', b && b.classList.contains('done') && b.querySelector('.r').textContent === 'DONE');
+  }
+
+  // 3i) Button mode on Workday: back on the job list with a new application id → highlighted button.
+  {
+    const p = makePage('https://unitytech.wd1.myworkdayjobs.com/en-US/Unity/job/SF/ML-Intern_JOBREQ-1', `<h2 data-automation-id="jobPostingHeader">ML Intern</h2><div data-automation-id="jobPostingDescription">${JD}</div>`, { settings: {} });
+    await sleep(1700);
+    p.w.document.body.innerHTML = '<p>136 JOBS FOUND</p>';
+    p.w.history.pushState({}, '', '/en-US/Unity?source=LinkedIn&Job_Application_ID=abc999');
+    await sleep(2800);
+    const b = buttonOf(p);
+    ok('button mode workday: list page offers to record', b && b.classList.contains('hot') && !p.sent.some((m) => m.type === 'JT_APPLY_DETECTED'));
+    b.querySelector('.r').click();
+    await sleep(50);
+    const rec = p.sent.find((m) => m.type === 'JT_RECORD');
+    ok('button mode workday: records with the company (background adds the posting)', rec && rec.job.company === 'Unity' && /Job_Application_ID=abc999/.test(rec.job.url));
+  }
+
+  // 3j) Button turned off in Settings.
+  {
+    const p = makePage('https://job-boards.greenhouse.io/acme/jobs/7', `<div class="job__title"><h1>QA Intern</h1></div><div class="job__description">${JD}</div>`, { settings: { showButton: false } });
+    await sleep(1700);
+    ok('button off: no button', !buttonOf(p) && p.sent.some((m) => m.type === 'JT_JOB_SEEN'));
   }
 
   // 4) Unrelated site -> content script stays idle

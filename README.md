@@ -15,7 +15,7 @@ ApplyTrail is installed from this repository (it is not in the Chrome Web Store)
 3. Click **Load unpacked** and select the folder that contains `manifest.json`.
 4. Pin ApplyTrail to the toolbar. The tracker opens after installing.
 
-Pages that were already open before installing need a refresh before automatic recording works there.
+Pages that were already open before installing need a refresh before the **Record application** button appears there.
 
 **Updating:** download the zip again, replace the files in the same folder, and click ↻ on ApplyTrail in `chrome://extensions`. Your records stay. Do not click **Remove**: that deletes the records stored in the browser, unless you sync with Google.
 
@@ -25,7 +25,7 @@ Every copy has the same extension ID (fixed by `"key"` in `manifest.json`), so G
 
 | | |
 |---|---|
-| **Automatic** | After you submit on Greenhouse, Lever, Workday, Ashby, LinkedIn Easy Apply, Indeed and similar sites, the "Thank you for applying / Your application has been submitted" page is detected (on Workday, the return to the job list after submitting) and the application is saved as *Applied*. A notice appears in the corner, with **Undo** and **Edit**. |
+| **Button on the page** | On a job posting (Greenhouse, Lever, Workday, Ashby, LinkedIn, Indeed and others), click **＋ Record application** in the bottom-right corner. Title, company, location and JD are saved as *Applied*, with **Edit** and **Undo** in the notice. After you submit an application, the button turns blue ("Just applied? Click to record"), but nothing is saved until you click it. Once recorded it shows **✓ Recorded**. |
 | **One click** | On any job posting, click the toolbar icon (or press `Alt+Shift+J`). Company, title, location, salary, visa sponsorship and the JD are filled in; check and save. You can also save it as *Wishlist*. |
 | **Manual** | **+ Add manually** in the tracker. |
 
@@ -33,7 +33,9 @@ For postings on **Workday, Greenhouse, Lever and Ashby**, the JD is taken from t
 
 If the JD is not picked up, select the JD text on the page and then click the icon. The selection is used as the JD. In the tracker, **JD → ↻ Get again** fetches the JD from the posting link.
 
-Confirmation pages rarely include the JD, so automatic recording fills in details from the posting you viewed last in the same tab (or in the LinkedIn tab that opened the application).
+Confirmation pages rarely include the JD, so recording from one fills in details from the posting you viewed last in the same tab (or in the LinkedIn tab that opened the application).
+
+Prefer it hands-free? **Settings → How applications are recorded → Automatically** records as soon as a "Thank you for applying" page is detected. The button can also be hidden there.
 
 ## Recruiting emails (Gmail)
 
@@ -49,7 +51,7 @@ While Gmail is open on the web (mail.google.com), ApplyTrail reads the sender, s
 
 - A notice in Gmail lets you undo. **📧 Email activity** in the tracker lists every result with a link back to the email.
 - Emails are matched by sender domain, sender name (for emails sent through Greenhouse and other ATSs) and company names in the email. If one company has several applications, the job title in the email decides; if it is still unclear, you pick.
-- If a confirmation arrives for a posting you viewed in the last 3 weeks that was never recorded (say the tab was open before you installed), the application is recorded from that posting, with title, JD and link (you can undo).
+- If a confirmation arrives for a posting you viewed in the last 3 weeks that was never recorded, Email activity suggests it with that posting's title, JD and link: one click on **Create record** (with automatic recording on, it is recorded right away and can be undone).
 - Emails are matched by who sent them and the subject first. A company mentioned only in the body ("join with Google Meet") is ignored when the sender is another company.
 - Any other application confirmation with no matching record shows up as "possibly an application you have not tracked", with one-click **Create record**. This is a quick way to backfill applications from before you installed (last 60 days).
 - Statuses never move backward, and emails older than the application date are ignored.
@@ -95,7 +97,7 @@ Click **☁ Sign in to sync** in the tracker and choose your Google account. Eve
 
 - Without sync, **uninstalling the extension deletes your data**. Use **Back up JSON** (full backup; restore with **Import backup**) or **Export CSV** (Excel / Google Sheets).
 - Without sync, the tracker reminds you to back up when you have 5+ records and no backup in 14 days.
-- Automatic recording and email recognition can be turned off in Settings.
+- Settings: how applications are recorded (button or automatic), the page button, and email recognition.
 
 ## Privacy
 

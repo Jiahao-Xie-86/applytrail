@@ -856,7 +856,8 @@ $('addBtn').onclick = async () => {
 
 async function openSettings(focusSync) {
   const s = await S.getSettings();
-  $('sAuto').checked = s.autoDetect;
+  $('sMode').value = s.recordMode === 'auto' ? 'auto' : 'button';
+  $('sButton').checked = s.showButton !== false;
   $('sEmail').checked = s.emailDetect;
   $('sDefault').innerHTML = opts(JT.STATUSES.filter((x) => ['applied', 'wishlist'].includes(x.id)), s.defaultStatus);
   let usage = t('共 {n} 条记录', { n: state.apps.length });
@@ -869,7 +870,8 @@ async function openSettings(focusSync) {
 
 $('settingsBtn').onclick = () => openSettings(false);
 $('syncChip').onclick = () => openSettings(true);
-$('sAuto').onchange = (e) => S.setSettings({ autoDetect: e.target.checked });
+$('sMode').onchange = (e) => S.setSettings({ recordMode: e.target.value });
+$('sButton').onchange = (e) => S.setSettings({ showButton: e.target.checked });
 $('sEmail').onchange = (e) => S.setSettings({ emailDetect: e.target.checked });
 $('sDefault').onchange = (e) => S.setSettings({ defaultStatus: e.target.value });
 

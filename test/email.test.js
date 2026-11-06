@@ -137,6 +137,11 @@ eq('no false match on substring', m({ senderName: 'Metabase', senderEmail: 'hell
     ['applied', true, 'Unity', 'Software Engineer Intern, Graphics', 'Workday', true, '2026-11-03']);
   await E.undo(conf[0].id);
   eq('undo removes the recorded posting', await S.get(conf[0].appId), null);
+  // Button mode (the default): the same email only suggests the record, with the posting attached.
+  const sug = await E.process([{ source: 'open', legacyId: 'u1b', ...unityMail, dateText: recent }], '/mail/u/0', { autoCreate: false });
+  eq('button mode: confirmation only suggests',
+    [sug[0] && sug[0].state, sug[0] && !!sug[0].appId, sug[0] && sug[0].viewedUrl, sug[0] && sug[0].guessTitle],
+    ['unmatched', false, posting.url, 'Software Engineer Intern, Graphics']);
   const oa = await E.process([{ source: 'open', legacyId: 'u2', subject: 'Unity coding assessment', body: 'Please complete the online assessment on HackerRank.', senderName: 'Unity', senderEmail: 'unitytech@myworkday.com', dateText: recent }], '/mail/u/0');
   eq('other email types only suggest', [oa[0] && oa[0].state, oa[0] && oa[0].guessTitle], ['unmatched', 'Software Engineer Intern, Graphics']);
   const fromOa = await S.get((await E.resolve(oa[0].id, 'create')).appId);
