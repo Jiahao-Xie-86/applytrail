@@ -108,7 +108,11 @@ async function rememberRecent(job) {
   const key = A.canonicalUrl(job.url || '');
   if (!key || !job.title) return;
   const now = Date.now();
-  const list = ((await chrome.storage.local.get('recentJobs')).recentJobs || []).filter((j) => j.key !== key && now - j.at < RECENT_TTL);
+  // One entry per posting: a single-page site can show the same posting under several URLs.
+  const same = A.dedupeKey(job.company || '', job.title);
+  const list = ((await chrome.storage.local.get('recentJobs')).recentJobs || []).filter(
+    (j) => j.key !== key && A.dedupeKey(j.company || '', j.title) !== same && now - j.at < RECENT_TTL
+  );
   const entry = { ...job, description: (job.description || '').slice(0, 20000), key, host: hostOf(job.url), at: now };
   await chrome.storage.local.set({ recentJobs: [entry, ...list].slice(0, RECENT_MAX) });
 }
@@ -173,6 +177,7 @@ async function fillJD(appId, created) {
     const app = await S.get(appId);
     if (!app || !J.apiName(app.url) || (!created && !J.problem(app.description))) return;
     const got = await J.fetch(app.url);
+    if (got && got.via === 'page' && !J.problem(app.description)) return; // API refused: keep the page's JD
     const fresh = got && (await S.get(appId)); // undone in the meantime → gone
     if (fresh) await S.save(J.applyTo(fresh, got));
   } catch (e) {
@@ -326,6 +331,6 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 chrome.storage.onChanged.addListener(async (changes, area) => {
   if (area !== 'local' || !Object.keys(changes).some((k) => k.startsWith('app:'))) return;
   urlIndex = null;
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  if (tab) updateBadge(tab.id, tab.url);
+  // Every open tab: the record may come from a tab that is not the active one (or another window).
+  for (const tab of await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] })) updateBadge(tab.id, tab.url);
 });

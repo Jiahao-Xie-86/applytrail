@@ -13,6 +13,8 @@
   };
   if (window.__JT_CONTENT_ALIVE__ && window.__JT_CONTENT_ALIVE__()) return;
   window.__JT_CONTENT_ALIVE__ = alive;
+  // A copy cut off by an update leaves its button and notice behind, and they no longer work.
+  document.querySelectorAll('[data-applytrail]').forEach((el) => el.remove());
   const send = (msg) => {
     if (!alive()) return Promise.resolve();
     try {
@@ -208,7 +210,10 @@
     if (btnHost) renderButton();
   }
 
-  function resetButton() {
+  // force: the × was clicked. Otherwise the URL changed, but a check that ran first may already
+  // have set the button up for the new URL (e.g. Workday's new application id): keep that.
+  function resetButton(force) {
+    if (!force && btn.url === location.href) return;
     btn = { ...btn, url: '', info: null, job: null, submitted: false, appId: '' };
     if (btnHost) btnHost.remove();
     btnHost = null;
@@ -217,6 +222,7 @@
   function renderButton() {
     if (!btnHost) {
       btnHost = document.createElement('div');
+      btnHost.dataset.applytrail = 'button';
       btnHost.style.cssText = 'position:fixed;right:20px;bottom:96px;z-index:2147483646;';
       btnHost.attachShadow({ mode: 'open' });
       document.documentElement.appendChild(btnHost);
@@ -252,7 +258,7 @@
     });
     root.querySelector('.x').addEventListener('click', () => {
       btn.hidden = true;
-      resetButton();
+      resetButton(true);
     });
   }
 
@@ -264,6 +270,7 @@
   function showToast(msg) {
     if (!toastHost) {
       toastHost = document.createElement('div');
+      toastHost.dataset.applytrail = 'notice';
       toastHost.style.cssText = 'position:fixed;right:20px;bottom:20px;z-index:2147483647;';
       toastHost.attachShadow({ mode: 'open' });
       document.documentElement.appendChild(toastHost);
@@ -295,9 +302,10 @@
       <div class="t"><div class="h"><span>${head}</span><button class="x" data-act="close" title="${esc(msg.closeLabel)}">×</button></div>
       <div class="j">${job}</div><div class="b">${buttons}</div></div>`;
 
-    root.querySelectorAll('button').forEach((btn) =>
-      btn.addEventListener('click', async () => {
-        const act = btn.dataset.act;
+    // (el, not btn: btn is the page button's state, checked below after an undo)
+    root.querySelectorAll('button').forEach((el) =>
+      el.addEventListener('click', async () => {
+        const act = el.dataset.act;
         if (act === 'open') send({ type: 'JT_OPEN_DASHBOARD', appId: msg.appId, hash: msg.hash });
         if (act === 'undo') {
           await send(

@@ -197,6 +197,17 @@ const JD = '<h2>Responsibilities</h2><p>' + 'Build backend services in Python an
     ok('button mode workday: records with the company (background adds the posting)', rec && rec.job.company === 'Unity' && /Job_Application_ID=abc999/.test(rec.job.url));
   }
 
+  // 3i') Same, but the submission lands just before the page's 4-second check: that check sees the
+  //      new id before the URL watcher does, and the watcher must not wipe the offer.
+  {
+    const p = makePage('https://unitytech.wd1.myworkdayjobs.com/en-US/Unity/job/SF/ML-Intern_JOBREQ-1', `<h2 data-automation-id="jobPostingHeader">ML Intern</h2><div data-automation-id="jobPostingDescription">${JD}</div>`, { settings: {} });
+    await sleep(3950);
+    p.w.history.pushState({}, '', '/en-US/Unity?source=LinkedIn&Job_Application_ID=race01');
+    await sleep(3500);
+    const b = buttonOf(p);
+    ok('button mode workday: submission right before the timed check still offers', b && b.classList.contains('hot'), b ? b.className : 'no button');
+  }
+
   // 3j) Button turned off in Settings.
   {
     const p = makePage('https://job-boards.greenhouse.io/acme/jobs/7', `<div class="job__title"><h1>QA Intern</h1></div><div class="job__description">${JD}</div>`, { settings: { showButton: false } });

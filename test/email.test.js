@@ -53,6 +53,12 @@ eq('guess company recruiter person', E.guessCompany({ senderName: 'Emily Chen', 
 eq('guess company linkedin', E.guessCompany({ senderName: 'LinkedIn', senderEmail: 'jobs-noreply@linkedin.com', subject: 'Alex, your application was sent to Ramp' }), 'Ramp');
 eq('guess title', E.guessTitle({ subject: 'Thank you for applying for the Software Engineer Intern position' }), 'Software Engineer Intern');
 eq('guess title 2', E.guessTitle({ subject: 'Your application to Data Scientist Intern at Ramp' }), 'Data Scientist Intern');
+// Subject names only the company: the title comes from the body.
+eq('title from body', E.guessTitle({ subject: 'Thank you for applying to Figma', body: 'Hi, We have received your application for Product Design Intern. Our team will review it.' }, 'Figma'), 'Product Design Intern');
+eq('title from body (position at)', E.guessTitle({ subject: 'Thanks!', body: 'Thank you for applying for the Data Analyst Intern position at Figma, we appreciate it.' }, 'Figma'), 'Data Analyst Intern');
+eq('title from body (Workday wording)', E.guessTitle({ subject: 'Thank you for applying to Unity', body: 'Hi, Thank you for applying for Machine Learning Engineer-Internship. You have successfully submitted your application.' }, 'Unity'), 'Machine Learning Engineer-Internship');
+eq('no title from vague body', E.guessTitle({ subject: 'Thank you for applying to Figma', body: 'Thank you for your application for this role. We will be in touch.' }, 'Figma'), '');
+eq('company is not a title', E.guessTitle({ subject: 'Thank you for applying to Figma', body: 'Thank you for applying to Figma!' }, 'Figma'), '');
 
 // ---------- matching ----------
 const mk = (company, title, appliedDate, status = 'applied') => S.newApp({ company, title, appliedDate, status });
@@ -137,6 +143,11 @@ eq('no false match on substring', m({ senderName: 'Metabase', senderEmail: 'hell
     ['applied', true, 'Unity', 'Software Engineer Intern, Graphics', 'Workday', true, '2026-11-03']);
   await E.undo(conf[0].id);
   eq('undo removes the recorded posting', await S.get(conf[0].appId), null);
+  // The same posting kept under several URLs (single-page site) is still one posting, not ambiguous.
+  await local.set({ recentJobs: [posting, { ...posting, url: posting.url + '?Job_Application_ID=x', key: 'k2' }, { ...posting, key: 'k3' }] });
+  const dup = await E.process([{ source: 'open', legacyId: 'u1d', ...unityMail, dateText: recent }], '/mail/u/0', { autoCreate: false });
+  eq('duplicate viewed postings still match', dup[0] && dup[0].viewedUrl, posting.url);
+  await local.set({ recentJobs: [posting] });
   // Button mode (the default): the same email only suggests the record, with the posting attached.
   const sug = await E.process([{ source: 'open', legacyId: 'u1b', ...unityMail, dateText: recent }], '/mail/u/0', { autoCreate: false });
   eq('button mode: confirmation only suggests',

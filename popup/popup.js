@@ -145,7 +145,8 @@ async function officialJD() {
     src.className = 'jd-src hidden'; // the user started editing: leave their text alone
     return;
   }
-  if (!got) {
+  // The API refused and only the page's own copy (no line breaks) came back: keep a good page JD.
+  if (!got || (got.via === 'page' && !problem)) {
     show(problem ? t('⚠ 没能从 {site} 读取官方 JD，网页上读到的 JD 可能不完整。', { site }) : t('没能从 {site} 读取官方 JD，下面是从网页读到的内容。', { site }), problem ? 'bad' : '');
     return;
   }
@@ -156,7 +157,7 @@ async function officialJD() {
   if (!form.elements.jobId.value && got.jobId) form.elements.jobId.value = got.jobId;
   refreshDerived();
   if (/JD/.test($('warn').textContent)) $('warn').classList.add('hidden');
-  show(t('✓ JD 取自 {site} 官方职位数据（与职位页原文一致）', { site }), 'ok');
+  show(got.via === 'page' ? t('✓ JD 取自 {site} 职位页面里的职位数据', { site }) : t('✓ JD 取自 {site} 官方职位数据（与职位页原文一致）', { site }), 'ok');
 }
 
 function openDashboard(id) {

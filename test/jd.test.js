@@ -67,6 +67,12 @@ const LONG = 'We build data platforms for analytics and machine learning. '.repe
   got = await J.fetch('https://careers.acme.com/jobs/1', { page: true });
   ok('page JSON-LD fallback', got && got.via === 'page' && got.title === 'Data Analyst' && got.company === 'Acme & Co' && got.description.startsWith('We build'));
 
+  // Workday API rate-limited (429): the posting page's own JobPosting data is used instead.
+  fetched.length = 0;
+  reply = (url) => (url.includes('/wday/cxs/') ? null : `<script type="application/ld+json">{"@type":"JobPosting","title":"ML Intern","description":"${LONG}"}</script>`);
+  got = await J.fetch('https://unitytech.wd1.myworkdayjobs.com/en-US/Unity/details/ML-Intern_R1?q=ml');
+  ok('API refused: falls back to the posting page', got && got.via === 'page' && got.title === 'ML Intern' && fetched[1] === 'https://unitytech.wd1.myworkdayjobs.com/en-US/Unity/job/ML-Intern_R1', JSON.stringify(fetched));
+
   // ---------- sanity checks ----------
   ok('problem: empty / short / fine', J.problem('') === 'empty' && J.problem('Too short.') === 'short' && J.problem(LONG) === '');
   ok('problem: job list mixed in', J.problem(LONG + ' 31 JOBS FOUND Posted Today Posted Yesterday Posted 30+ Days Ago') === 'list');
